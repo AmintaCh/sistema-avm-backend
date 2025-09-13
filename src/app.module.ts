@@ -18,6 +18,9 @@ import { CatalogosController } from './catalogos/catalogos.controller';
 import { CatalogosService } from './catalogos/catalogos.service';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { Locacion } from './entities/locacion.entity';
+import { LocacionesController } from './locaciones/locaciones.controller';
+import { LocacionesService } from './locaciones/locaciones.service';
 
 @Module({
   imports: [
@@ -31,11 +34,11 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
       username: process.env.DB_USER || 'app_user',
       password: process.env.DB_PASSWORD || 'TuPasswordFuerte!',
       database: process.env.DB_DATABASE || 'BD_VIVAMOS',
-      entities: [Persona, Usuario, Rol, Beneficiario, Municipio, Departamento],
+      entities: [Persona, Usuario, Rol, Beneficiario, Municipio, Departamento, Locacion],
       synchronize: false,
       // logging: true,
     }),
-    TypeOrmModule.forFeature([Persona, Usuario, Rol, Beneficiario, Municipio, Departamento]),
+    TypeOrmModule.forFeature([Persona, Usuario, Rol, Beneficiario, Municipio, Departamento, Locacion]),
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],
@@ -45,12 +48,13 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
       }),
     }),
   ],
-  controllers: [AppController, UsersController, BeneficiariosController, CatalogosController],
+  controllers: [AppController, UsersController, BeneficiariosController, CatalogosController, LocacionesController],
   providers: [
     AppService,
     UsersService,
     BeneficiariosService,
     CatalogosService,
+    LocacionesService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
