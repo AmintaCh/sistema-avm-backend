@@ -5,13 +5,13 @@ export class CreateUserDto {
   tercerNombre?: string;
   primerApellido: string;
   segundoApellido?: string;
-  fechaNacimiento: string; // ISO date (YYYY-MM-DD)
-  genero: string; // 1 char
-  tipoDocumento: string; // max 15
-  numeroDocumento: string; // max 25
+  fechaNacimiento?: string; // ISO date (YYYY-MM-DD)
+  genero?: string; // 1 char
+  tipoDocumento?: string; // max 15
+  numeroDocumento?: string; // max 25
   direccionDetalle?: string;
-  municipioId: number;
-  locacionId: number;
+  municipioId?: number;
+  locacionId?: number;
   telefono?: string;
 
   // Usuario

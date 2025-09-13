@@ -71,20 +71,42 @@ export class UsersService {
     if (!dto.primerApellido || !dto.primerApellido.trim()) {
       throw new BadRequestException('El campo primer_apellido es requerido');
     }
-    if (!dto.tipoDocumento || !dto.numeroDocumento) {
-      throw new BadRequestException('tipo_documento y numero_documento son requeridos');
-    }
-    if (!dto.municipioId) {
-      throw new BadRequestException('municipio_id y locacion_id son requeridos');
-    }
+    // Otros campos de persona son opcionales; el perfil podrá completarse luego.
+
+    // Construcción anticipada de nombreUsuario si no viene en el DTO
+    const buildNombreUsuario = (data: {
+      primerNombre: string;
+      segundoNombre?: string | null;
+      tercerNombre?: string | null;
+      primerApellido: string;
+      segundoApellido?: string | null;
+      nombreUsuario?: string;
+    }) => {
+      if (data.nombreUsuario && data.nombreUsuario.trim()) {
+        return data.nombreUsuario.trim();
+      }
+      const parts = [
+        data.primerNombre,
+        data.segundoNombre ?? '',
+        data.tercerNombre ?? '',
+        data.primerApellido,
+        data.segundoApellido ?? '',
+      ]
+        .map((p) => (p ?? '').toString().trim())
+        .filter((p) => p.length > 0);
+      const full = parts.join(' ');
+      return full.slice(0, 25);
+    };
+
+    const posibleNombreUsuario = buildNombreUsuario(dto);
 
     // Validaciones de unicidad previas (documento, correo y usuario).
     const [docExistente, emailExistente, userExistente] = await Promise.all([
-      this.personaRepo.findOne({ where: { numeroDocumento: dto.numeroDocumento } }),
-      this.usuarioRepo.findOne({ where: { correoElectronico: dto.correoElectronico } }),
-      dto.nombreUsuario
-        ? this.usuarioRepo.findOne({ where: { nombreUsuario: dto.nombreUsuario } })
+      dto.numeroDocumento
+        ? this.personaRepo.findOne({ where: { numeroDocumento: dto.numeroDocumento } })
         : Promise.resolve(null),
+      this.usuarioRepo.findOne({ where: { correoElectronico: dto.correoElectronico } }),
+      this.usuarioRepo.findOne({ where: { nombreUsuario: posibleNombreUsuario } }),
     ]);
 
     if (docExistente) {
@@ -112,21 +134,30 @@ export class UsersService {
         tercerNombre: dto.tercerNombre ?? null,
         primerApellido: dto.primerApellido,
         segundoApellido: dto.segundoApellido ?? null,
-        fechaNacimiento: dto.fechaNacimiento,
-        genero: dto.genero,
-        tipoDocumento: dto.tipoDocumento,
-        numeroDocumento: dto.numeroDocumento,
+        fechaNacimiento: dto.fechaNacimiento ?? null,
+        genero: dto.genero ?? null,
+        tipoDocumento: dto.tipoDocumento ?? null,
+        numeroDocumento: dto.numeroDocumento ?? null,
         direccionDetalle: dto.direccionDetalle ?? null,
-        municipioId: dto.municipioId,
-        locacionId: dto.locacionId,
+        municipioId: dto.municipioId ?? null,
+        locacionId: dto.locacionId ?? null,
         telefono: dto.telefono ?? null,
       });
       const personaGuardada = await manager.save(Persona, persona);
 
-      // Si no viene nombreUsuario, generamos uno basado en nombre + apellido (limitado a 25)
-      const baseUsername = dto.nombreUsuario
-        ? dto.nombreUsuario
-        : `${personaGuardada.primerNombre}.${personaGuardada.primerApellido}`.toLowerCase();
+      // Si no viene nombreUsuario, generamos uno concatenando nombres y apellidos con espacios (limitado a 25)
+      const parts = [
+        personaGuardada.primerNombre,
+        personaGuardada.segundoNombre ?? '',
+        personaGuardada.tercerNombre ?? '',
+        personaGuardada.primerApellido,
+        personaGuardada.segundoApellido ?? '',
+      ]
+        .map((p) => (p ?? '').toString().trim())
+        .filter((p) => p.length > 0);
+      const baseUsername = dto.nombreUsuario && dto.nombreUsuario.trim()
+        ? dto.nombreUsuario.trim()
+        : parts.join(' ');
       const nombreUsuario = baseUsername.slice(0, 25);
 
       const usuario = manager.create(Usuario, {

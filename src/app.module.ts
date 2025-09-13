@@ -12,6 +12,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Beneficiario } from './entities/beneficiario.entity';
 import { BeneficiariosController } from './beneficiarios/beneficiarios.controller';
 import { BeneficiariosService } from './beneficiarios/beneficiarios.service';
+import { Municipio } from './entities/municipio.entity';
+import { Departamento } from './entities/departamento.entity';
+import { CatalogosController } from './catalogos/catalogos.controller';
+import { CatalogosService } from './catalogos/catalogos.service';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -25,11 +31,11 @@ import { BeneficiariosService } from './beneficiarios/beneficiarios.service';
       username: process.env.DB_USER || 'app_user',
       password: process.env.DB_PASSWORD || 'TuPasswordFuerte!',
       database: process.env.DB_DATABASE || 'BD_VIVAMOS',
-      entities: [Persona, Usuario, Rol, Beneficiario],
+      entities: [Persona, Usuario, Rol, Beneficiario, Municipio, Departamento],
       synchronize: false,
       // logging: true,
     }),
-    TypeOrmModule.forFeature([Persona, Usuario, Rol, Beneficiario]),
+    TypeOrmModule.forFeature([Persona, Usuario, Rol, Beneficiario, Municipio, Departamento]),
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],
@@ -39,7 +45,13 @@ import { BeneficiariosService } from './beneficiarios/beneficiarios.service';
       }),
     }),
   ],
-  controllers: [AppController, UsersController, BeneficiariosController],
-  providers: [AppService, UsersService, BeneficiariosService],
+  controllers: [AppController, UsersController, BeneficiariosController, CatalogosController],
+  providers: [
+    AppService,
+    UsersService,
+    BeneficiariosService,
+    CatalogosService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+  ],
 })
 export class AppModule {}
