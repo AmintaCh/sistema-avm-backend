@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { BeneficiariosService } from './beneficiarios.service';
 import { CreateBeneficiarioDto } from './dto/create-beneficiario.dto';
 
@@ -24,5 +24,14 @@ export class BeneficiariosController {
   @Post()
   async crear(@Body() body: CreateBeneficiarioDto) {
     return this.beneficiariosService.crear(body);
+  }
+
+  @Get('por-id/:beneficiarioId')
+  async obtenerPorBeneficiario(@Param('beneficiarioId') beneficiarioId: string) {
+    const id = Number(beneficiarioId);
+    if (Number.isNaN(id)) {
+      throw new BadRequestException('beneficiarioId debe ser numérico');
+    }
+    return this.beneficiariosService.buscarPorBeneficiarioId(id);
   }
 }

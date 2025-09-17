@@ -21,6 +21,10 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { Locacion } from './entities/locacion.entity';
 import { LocacionesController } from './locaciones/locaciones.controller';
 import { LocacionesService } from './locaciones/locaciones.service';
+import { Proyecto } from './entities/proyecto.entity';
+import { ProyectosController } from './proyectos/proyectos.controller';
+import { ProyectosService } from './proyectos/proyectos.service';
+import { Estado } from './entities/estado.entity';
 
 @Module({
   imports: [
@@ -34,11 +38,21 @@ import { LocacionesService } from './locaciones/locaciones.service';
       username: process.env.DB_USER || 'app_user',
       password: process.env.DB_PASSWORD || 'TuPasswordFuerte!',
       database: process.env.DB_DATABASE || 'BD_VIVAMOS',
-      entities: [Persona, Usuario, Rol, Beneficiario, Municipio, Departamento, Locacion],
+      entities: [Persona, Usuario, Rol, Beneficiario, Municipio, Departamento, Locacion, Proyecto, Estado],
       synchronize: false,
       // logging: true,
     }),
-    TypeOrmModule.forFeature([Persona, Usuario, Rol, Beneficiario, Municipio, Departamento, Locacion]),
+    TypeOrmModule.forFeature([
+      Persona,
+      Usuario,
+      Rol,
+      Beneficiario,
+      Municipio,
+      Departamento,
+      Locacion,
+      Proyecto,
+      Estado,
+    ]),
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],
@@ -48,13 +62,21 @@ import { LocacionesService } from './locaciones/locaciones.service';
       }),
     }),
   ],
-  controllers: [AppController, UsersController, BeneficiariosController, CatalogosController, LocacionesController],
+  controllers: [
+    AppController,
+    UsersController,
+    BeneficiariosController,
+    CatalogosController,
+    LocacionesController,
+    ProyectosController,
+  ],
   providers: [
     AppService,
     UsersService,
     BeneficiariosService,
     CatalogosService,
     LocacionesService,
+    ProyectosService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })

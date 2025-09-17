@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Beneficiario } from '../entities/beneficiario.entity';
@@ -139,5 +139,61 @@ export class BeneficiariosService {
         longitud: saved.longitud,
       };
     });
+  }
+
+  async buscarPorBeneficiarioId(beneficiarioId: number) {
+    const qb = this.benefRepo
+      .createQueryBuilder('b')
+      .leftJoin('persona', 'p', 'p.persona_id = b.persona_id')
+      .leftJoin('municipio', 'm', 'm.municipio_id = p.municipio_id')
+      .leftJoin('locacion', 'l', 'l.locacion_id = p.locacion_id')
+      .select('b.beneficiario_id', 'beneficiarioId')
+      .addSelect('b.estado_id', 'estadoId')
+      .addSelect('b.fecha_inicio', 'fechaInicio')
+      .addSelect('b.latitud', 'latitud')
+      .addSelect('b.longitud', 'longitud')
+      .addSelect('p.persona_id', 'personaId')
+      .addSelect('p.primer_nombre', 'primerNombre')
+      .addSelect('p.segundo_nombre', 'segundoNombre')
+      .addSelect('p.tercer_nombre', 'tercerNombre')
+      .addSelect('p.primer_apellido', 'primerApellido')
+      .addSelect('p.segundo_apellido', 'segundoApellido')
+      .addSelect('p.tipo_documento', 'tipoDocumento')
+      .addSelect('p.numero_documento', 'numeroDocumento')
+      .addSelect('p.telefono', 'telefono')
+      .addSelect('m.municipio_id', 'municipioId')
+      .addSelect('m.nombre_municipio', 'nombreMunicipio')
+      .addSelect('l.locacion_id', 'locacionId')
+      .addSelect('l.nombre_locacion', 'nombreLocacion')
+      .where('b.beneficiario_id = :beneficiarioId', { beneficiarioId })
+      .orderBy('b.beneficiario_id', 'DESC');
+
+    const r = await qb.getRawOne();
+    if (!r) {
+      throw new NotFoundException('No se encontró el beneficiario indicado');
+    }
+
+    return {
+      beneficiarioId: r.beneficiarioId,
+      estadoId: r.estadoId,
+      fechaInicio: r.fechaInicio,
+      latitud: r.latitud,
+      longitud: r.longitud,
+      persona: {
+        personaId: r.personaId,
+        primerNombre: r.primerNombre,
+        segundoNombre: r.segundoNombre,
+        tercerNombre: r.tercerNombre,
+        primerApellido: r.primerApellido,
+        segundoApellido: r.segundoApellido,
+        tipoDocumento: r.tipoDocumento,
+        numeroDocumento: r.numeroDocumento,
+        telefono: r.telefono,
+        municipio: r.municipioId
+          ? { municipioId: r.municipioId, nombreMunicipio: r.nombreMunicipio }
+          : null,
+        locacion: r.locacionId ? { locacionId: r.locacionId, nombreLocacion: r.nombreLocacion } : null,
+      },
+    };
   }
 }

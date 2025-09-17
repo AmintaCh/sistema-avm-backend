@@ -26,4 +26,19 @@ export class CatalogosController {
     }
     return this.svc.municipios();
   }
+
+  @Get('estados')
+  estados(@Query('tipoEstado') tipoEstado?: string) {
+    if (typeof tipoEstado === 'string') {
+      const t = tipoEstado.trim();
+      if (t.length > 1) {
+        throw new BadRequestException('tipoEstado debe ser una sola letra');
+      }
+      if (t.length === 1 && !/^[A-Za-z]$/.test(t)) {
+        throw new BadRequestException('tipoEstado inválido');
+      }
+      return this.svc.estados(t);
+    }
+    return this.svc.estados();
+  }
 }
