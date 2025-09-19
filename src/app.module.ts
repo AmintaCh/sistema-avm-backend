@@ -25,6 +25,7 @@ import { Proyecto } from './entities/proyecto.entity';
 import { ProyectosController } from './proyectos/proyectos.controller';
 import { ProyectosService } from './proyectos/proyectos.service';
 import { Estado } from './entities/estado.entity';
+import { UsuarioProyecto } from './entities/usuario-proyecto.entity';
 
 @Module({
   imports: [
@@ -38,7 +39,18 @@ import { Estado } from './entities/estado.entity';
       username: process.env.DB_USER || 'app_user',
       password: process.env.DB_PASSWORD || 'TuPasswordFuerte!',
       database: process.env.DB_DATABASE || 'BD_VIVAMOS',
-      entities: [Persona, Usuario, Rol, Beneficiario, Municipio, Departamento, Locacion, Proyecto, Estado],
+      entities: [
+        Persona,
+        Usuario,
+        Rol,
+        Beneficiario,
+        Municipio,
+        Departamento,
+        Locacion,
+        Proyecto,
+        Estado,
+        UsuarioProyecto,
+      ],
       synchronize: false,
       // logging: true,
     }),
@@ -52,6 +64,7 @@ import { Estado } from './entities/estado.entity';
       Locacion,
       Proyecto,
       Estado,
+      UsuarioProyecto,
     ]),
     JwtModule.registerAsync({
       global: true,
