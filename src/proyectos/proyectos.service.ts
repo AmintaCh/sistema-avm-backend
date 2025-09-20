@@ -34,7 +34,7 @@ export class ProyectosService {
       .addSelect('p.fecha_inicio', 'fechaInicio')
       .addSelect('p.fecha_fin', 'fechaFin')
       .addSelect('p.estado_id', 'estadoId')
-      .addSelect('e.nombre', 'estadoNombre')
+      .addSelect('e.descripcion', 'estadoNombre')
       .orderBy('p.nombre_proyecto', 'ASC');
 
     if (typeof estadoId === 'number') {
@@ -98,7 +98,7 @@ export class ProyectosService {
       .addSelect('p.fecha_inicio', 'fechaInicio')
       .addSelect('p.fecha_fin', 'fechaFin')
       .addSelect('p.estado_id', 'estadoId')
-      .addSelect('e.nombre', 'estadoNombre')
+      .addSelect('e.descripcion', 'estadoNombre')
       .where('p.proyecto_id = :proyectoId', { proyectoId })
       .orderBy('p.proyecto_id', 'DESC');
 
@@ -113,7 +113,7 @@ export class ProyectosService {
       descripcion: r.descripcion,
       fechaInicio: r.fechaInicio,
       fechaFin: r.fechaFin,
-      estado: { estadoId: r.estadoId, nombre: r.estadoNombre },
+      estado: { estadoId: r.estadoId, descripcion: r.estadoNombre },
     };
   }
 
@@ -369,6 +369,41 @@ export class ProyectosService {
     }));
   }
 
+  async obtenerActividadPorId(proyectoId: number, actividadId: number) {
+    if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
+      throw new BadRequestException('proyectoId inválido');
+    }
+    if (!Number.isInteger(actividadId) || actividadId <= 0) {
+      throw new BadRequestException('actividadId inválido');
+    }
+
+    const row = await this.actividadRepo
+      .createQueryBuilder('a')
+      .select('a.actividad_id', 'actividadId')
+      .addSelect('a.proyecto_id', 'proyectoId')
+      .addSelect('a.nombre_actividad', 'nombreActividad')
+      .addSelect('a.tipo_actividad', 'tipoActividad')
+      .addSelect('a.descripcion', 'descripcion')
+      .addSelect('a.fecha_actividad', 'fechaActividad')
+      .addSelect('a.lugar', 'lugar')
+      .where('a.actividad_id = :actividadId AND a.proyecto_id = :proyectoId', { actividadId, proyectoId })
+      .getRawOne();
+
+    if (!row) {
+      throw new NotFoundException('No se encontró la actividad para el proyecto indicado');
+    }
+
+    return {
+      actividadId: row.actividadId,
+      proyectoId: row.proyectoId,
+      nombreActividad: row.nombreActividad,
+      tipoActividad: row.tipoActividad,
+      descripcion: row.descripcion,
+      fechaActividad: row.fechaActividad,
+      lugar: row.lugar,
+    };
+  }
+
   // Asistencias
   async crearAsistencia(proyectoId: number, actividadId: number, dto: CreateAsistenciaDto) {
     if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
@@ -467,5 +502,184 @@ export class ProyectosService {
         },
       },
     }));
+  }
+
+  async crearAsistenciasEnLote(
+    proyectoId: number,
+    actividadId: number,
+    payload: {
+      items: Array<{ beneficiarioId: number; fechaRegistro: string; estadoId: number; observaciones?: string | null }>;
+      skipExistentes?: boolean;
+      upsert?: boolean;
+    },
+  ) {
+    if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
+      throw new BadRequestException('proyectoId inválido');
+    }
+    if (!Number.isInteger(actividadId) || actividadId <= 0) {
+      throw new BadRequestException('actividadId inválido');
+    }
+    if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) {
+      throw new BadRequestException('items es requerido y no puede estar vacío');
+    }
+
+    // Validar existencia de actividad dentro del proyecto
+    const actividad = await this.actividadRepo
+      .createQueryBuilder('a')
+      .where('a.actividad_id = :actividadId AND a.proyecto_id = :proyectoId', { actividadId, proyectoId })
+      .getOne();
+    if (!actividad) {
+      throw new NotFoundException('No se encontró la actividad para el proyecto indicado');
+    }
+
+    // Validaciones básicas de cada item
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    const sanitized = payload.items.map((it, idx) => {
+      const beneficiarioId = Number(it?.beneficiarioId);
+      const estadoId = Number(it?.estadoId);
+      const fechaRegistro = it?.fechaRegistro;
+      if (!Number.isInteger(beneficiarioId) || beneficiarioId <= 0) {
+        throw new BadRequestException(`items[${idx}].beneficiarioId inválido`);
+      }
+      if (typeof fechaRegistro !== 'string' || !dateRe.test(fechaRegistro)) {
+        throw new BadRequestException(`items[${idx}].fechaRegistro inválido (YYYY-MM-DD)`);
+      }
+      if (!Number.isInteger(estadoId)) {
+        throw new BadRequestException(`items[${idx}].estadoId inválido`);
+      }
+      const observaciones = it?.observaciones ?? null;
+      return { beneficiarioId, fechaRegistro, estadoId, observaciones };
+    });
+
+    // Evitar duplicados dentro del mismo lote por beneficiario (para una actividad)
+    const seen = new Set<number>();
+    const deduped: typeof sanitized = [];
+    const internosOmitidos: number[] = [];
+    for (const s of sanitized) {
+      if (seen.has(s.beneficiarioId)) {
+        internosOmitidos.push(s.beneficiarioId);
+        continue;
+      }
+      seen.add(s.beneficiarioId);
+      deduped.push(s);
+    }
+
+    // Verificar existencia de beneficiarios
+    const beneficiarioIds = deduped.map((s) => s.beneficiarioId);
+    const beneficiarios = await this.beneficiarioRepo
+      .createQueryBuilder('b')
+      .where('b.beneficiario_id IN (:...ids)', { ids: beneficiarioIds })
+      .getMany();
+    const encontrados = new Set(beneficiarios.map((b) => b.beneficiarioId));
+    const faltantes = beneficiarioIds.filter((id) => !encontrados.has(id));
+    if (faltantes.length > 0) {
+      throw new NotFoundException(`No se encontraron beneficiarios: ${faltantes.join(', ')}`);
+    }
+
+    // Verificar existentes ya registrados para la actividad
+    const existentesRows = await this.asistenciaRepo
+      .createQueryBuilder('as')
+      .select('as.beneficiario_id', 'beneficiarioId')
+      .where('as.actividad_id = :actividadId AND as.beneficiario_id IN (:...ids)', { actividadId, ids: beneficiarioIds })
+      .getRawMany<{ beneficiarioId: number }>();
+    const existentesSet = new Set(existentesRows.map((r) => Number(r.beneficiarioId)));
+
+    // Regla: upsert siempre (por defecto y sin necesidad de enviarlo)
+    const upsert = true;
+    const skipExistentes = payload.skipExistentes !== false; // sin efecto cuando upsert es true
+    if (!upsert && !skipExistentes && existentesSet.size > 0) {
+      throw new BadRequestException(
+        `Ya existen asistencias para beneficiarios en esta actividad: ${[...existentesSet].join(', ')}`,
+      );
+    }
+
+    const aInsertar = deduped.filter((s) => !existentesSet.has(s.beneficiarioId));
+    const aActualizar = upsert ? deduped.filter((s) => existentesSet.has(s.beneficiarioId)) : [];
+
+    // Mapa de beneficiarios por id para asociar entidades sin consultas extra
+    const benefPorId = new Map(beneficiarios.map((b) => [b.beneficiarioId, b] as const));
+
+    // Inserciones
+    let insertados = 0;
+    let resultadosInsert: Array<{
+      asistenciaId: number;
+      actividadId: number;
+      beneficiarioId: number;
+      fechaRegistro: string;
+      estadoId: number;
+      observaciones: string | null;
+    }> = [];
+    if (aInsertar.length > 0) {
+      const entidades = aInsertar.map((s) =>
+        this.asistenciaRepo.create({
+          actividad,
+          beneficiario: benefPorId.get(s.beneficiarioId)!,
+          fechaRegistro: s.fechaRegistro,
+          estadoId: s.estadoId,
+          observaciones: s.observaciones ?? null,
+        }),
+      );
+      const saved = await this.asistenciaRepo.save(entidades);
+      insertados = saved.length;
+      resultadosInsert = saved.map((s) => ({
+        asistenciaId: s.asistenciaId,
+        actividadId,
+        beneficiarioId: s.beneficiario.beneficiarioId,
+        fechaRegistro: s.fechaRegistro,
+        estadoId: s.estadoId,
+        observaciones: s.observaciones ?? null,
+      }));
+    }
+
+    // Actualizaciones (upsert)
+    let actualizados = 0;
+    let resultadosUpdate: Array<{
+      asistenciaId: number;
+      actividadId: number;
+      beneficiarioId: number;
+      fechaRegistro: string;
+      estadoId: number;
+      observaciones: string | null;
+    }> = [];
+    if (aActualizar.length > 0) {
+      const mapDatos = new Map(aActualizar.map((s) => [s.beneficiarioId, s] as const));
+      const existentes = await this.asistenciaRepo
+        .createQueryBuilder('as')
+        .leftJoinAndSelect('as.beneficiario', 'b')
+        .where('as.actividad_id = :actividadId AND as.beneficiario_id IN (:...ids)', {
+          actividadId,
+          ids: aActualizar.map((s) => s.beneficiarioId),
+        })
+        .getMany();
+      for (const e of existentes) {
+        const datos = mapDatos.get(e.beneficiario.beneficiarioId);
+        if (!datos) continue;
+        e.fechaRegistro = datos.fechaRegistro;
+        e.estadoId = datos.estadoId;
+        e.observaciones = datos.observaciones ?? null;
+      }
+      const savedUpd = await this.asistenciaRepo.save(existentes);
+      actualizados = savedUpd.length;
+      resultadosUpdate = savedUpd.map((s) => ({
+        asistenciaId: s.asistenciaId,
+        actividadId,
+        beneficiarioId: s.beneficiario.beneficiarioId,
+        fechaRegistro: s.fechaRegistro,
+        estadoId: s.estadoId,
+        observaciones: s.observaciones ?? null,
+      }));
+    }
+
+    const omitidosExistentes = upsert ? [] : [...existentesSet];
+    const omitidosInternos = internosOmitidos;
+    return {
+      total: sanitized.length,
+      insertados,
+      actualizados,
+      omitidos: omitidosInternos.length + omitidosExistentes.length,
+      omitidosInternos,
+      omitidosExistentes,
+      resultados: [...resultadosInsert, ...resultadosUpdate],
+    };
   }
 }

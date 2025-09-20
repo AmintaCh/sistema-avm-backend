@@ -5,6 +5,7 @@ import { AddUsuarioProyectoDto } from './dto/add-usuario-proyecto.dto';
 import { AddBeneficiarioProyectoDto } from './dto/add-beneficiario-proyecto.dto';
 import { CreateActividadDto } from './dto/create-actividad.dto';
 import { CreateAsistenciaDto } from './dto/create-asistencia.dto';
+import { CreateAsistenciasBatchDto } from './dto/create-asistencias-batch.dto';
 
 @Controller('proyectos')
 export class ProyectosController {
@@ -158,6 +159,22 @@ export class ProyectosController {
     return this.svc.listarActividadesDeProyecto(proyectoId);
   }
 
+  @Get(':id/actividades/:actividadId')
+  async obtenerActividad(
+    @Param('id') id: string,
+    @Param('actividadId') actividadIdParam: string,
+  ) {
+    const proyectoId = parseInt(id, 10);
+    const actividadId = parseInt(actividadIdParam, 10);
+    if (Number.isNaN(proyectoId)) {
+      throw new BadRequestException('id inválido');
+    }
+    if (Number.isNaN(actividadId)) {
+      throw new BadRequestException('actividadId inválido');
+    }
+    return this.svc.obtenerActividadPorId(proyectoId, actividadId);
+  }
+
   @Post(':id/actividades/:actividadId/asistencias')
   async crearAsistencia(
     @Param('id') id: string,
@@ -198,5 +215,25 @@ export class ProyectosController {
       throw new BadRequestException('actividadId inválido');
     }
     return this.svc.listarAsistenciasDeActividad(proyectoId, actividadId);
+  }
+
+  @Post(':id/actividades/:actividadId/asistencias/lote')
+  async crearAsistenciasLote(
+    @Param('id') id: string,
+    @Param('actividadId') actividadIdParam: string,
+    @Body() body: CreateAsistenciasBatchDto,
+  ) {
+    const proyectoId = parseInt(id, 10);
+    const actividadId = parseInt(actividadIdParam, 10);
+    if (Number.isNaN(proyectoId)) {
+      throw new BadRequestException('id inválido');
+    }
+    if (Number.isNaN(actividadId)) {
+      throw new BadRequestException('actividadId inválido');
+    }
+    if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+      throw new BadRequestException('items es requerido y no puede estar vacío');
+    }
+    return this.svc.crearAsistenciasEnLote(proyectoId, actividadId, body);
   }
 }

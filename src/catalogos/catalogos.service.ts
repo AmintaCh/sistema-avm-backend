@@ -67,15 +67,15 @@ export class CatalogosService {
     const qb = this.estadoRepo
       .createQueryBuilder('e')
       .select('e.estado_id', 'estadoId')
-      .addSelect('e.nombre', 'nombre')
+      .addSelect('e.descripcion', 'descripcion')
       .addSelect('e.tipo_estado', 'tipoEstado')
-      .orderBy('e.nombre', 'ASC');
+      .orderBy('e.descripcion', 'ASC');
 
     if (typeof tipoEstado === 'string' && tipoEstado.trim()) {
       qb.where('e.tipo_estado = :tipoEstado', { tipoEstado: tipoEstado.trim().toUpperCase().slice(0, 1) });
     }
 
     const rows = await qb.getRawMany();
-    return rows.map((r) => ({ estadoId: r.estadoId, nombre: r.nombre, tipoEstado: r.tipoEstado }));
+    return rows.map((r) => ({ estadoId: r.estadoId, descripcion: r.descripcion, tipoEstado: r.tipoEstado }));
   }
 }

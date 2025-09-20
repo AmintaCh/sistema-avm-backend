@@ -41,7 +41,7 @@ export class UsersService {
       .addSelect('u.estado_id', 'estadoId')
       .addSelect('r.rol_id', 'rolId')
       .addSelect('r.nombre_rol', 'nombreRol')
-      .addSelect('e.nombre', 'nombreEstado')
+      .addSelect('e.descripcion', 'nombreEstado')
       .addSelect('e.tipo_estado', 'tipoEstado')
       .orderBy('u.usuario_id', 'DESC');
 
