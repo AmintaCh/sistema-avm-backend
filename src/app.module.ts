@@ -26,6 +26,9 @@ import { ProyectosController } from './proyectos/proyectos.controller';
 import { ProyectosService } from './proyectos/proyectos.service';
 import { Estado } from './entities/estado.entity';
 import { UsuarioProyecto } from './entities/usuario-proyecto.entity';
+import { BeneficiarioProyecto } from './entities/beneficiario-proyecto.entity';
+import { Actividad } from './entities/actividad.entity';
+import { Asistencia } from './entities/asistencia.entity';
 
 @Module({
   imports: [
@@ -50,6 +53,9 @@ import { UsuarioProyecto } from './entities/usuario-proyecto.entity';
         Proyecto,
         Estado,
         UsuarioProyecto,
+        BeneficiarioProyecto,
+        Actividad,
+        Asistencia,
       ],
       synchronize: false,
       // logging: true,
@@ -65,6 +71,9 @@ import { UsuarioProyecto } from './entities/usuario-proyecto.entity';
       Proyecto,
       Estado,
       UsuarioProyecto,
+      BeneficiarioProyecto,
+      Actividad,
+      Asistencia,
     ]),
     JwtModule.registerAsync({
       global: true,

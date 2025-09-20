@@ -10,14 +10,35 @@ export class BeneficiariosController {
   async listar(
     @Query('estadoId') estadoId?: string,
     @Query('municipioId') municipioId?: string,
+    @Query('departamentoId') departamentoId?: string,
     @Query('q') q?: string,
+    @Query('fechaInicioDesde') fechaInicioDesde?: string,
+    @Query('fechaInicioHasta') fechaInicioHasta?: string,
+    @Query('nombre') nombre?: string,
+    @Query('numeroDocumento') numeroDocumento?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('start') start?: string,
+    @Query('end') end?: string,
   ) {
     const est = typeof estadoId === 'string' ? Number(estadoId) : undefined;
     const mun = typeof municipioId === 'string' ? Number(municipioId) : undefined;
+    const p = typeof page === 'string' ? Number(page) : undefined;
+    const ps = typeof pageSize === 'string' ? Number(pageSize) : undefined;
+    const dep = typeof departamentoId === 'string' ? Number(departamentoId) : undefined;
     return this.beneficiariosService.listar({
       estadoId: typeof est === 'number' && !Number.isNaN(est) ? est : undefined,
       municipioId: typeof mun === 'number' && !Number.isNaN(mun) ? mun : undefined,
+      departamentoId: typeof dep === 'number' && !Number.isNaN(dep) ? dep : undefined,
       q,
+      fechaInicioDesde,
+      fechaInicioHasta,
+      nombre,
+      numeroDocumento,
+      page: typeof p === 'number' && !Number.isNaN(p) ? p : undefined,
+      pageSize: typeof ps === 'number' && !Number.isNaN(ps) ? ps : undefined,
+      start: typeof start === 'string' && start !== '' && !Number.isNaN(Number(start)) ? Number(start) : undefined,
+      end: typeof end === 'string' && end !== '' && !Number.isNaN(Number(end)) ? Number(end) : undefined,
     });
   }
 

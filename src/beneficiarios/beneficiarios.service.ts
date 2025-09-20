@@ -13,11 +13,25 @@ export class BeneficiariosService {
     @InjectRepository(Persona) private readonly personaRepo: Repository<Persona>,
   ) {}
 
-  async listar(filters?: { estadoId?: number; municipioId?: number; q?: string }) {
+  async listar(filters?: {
+    estadoId?: number;
+    municipioId?: number;
+    departamentoId?: number;
+    q?: string;
+    fechaInicioDesde?: string;
+    fechaInicioHasta?: string;
+    nombre?: string;
+    numeroDocumento?: string;
+    page?: number;
+    pageSize?: number;
+    start?: number;
+    end?: number;
+  }) {
     const qb = this.benefRepo
       .createQueryBuilder('b')
       .leftJoin('persona', 'p', 'p.persona_id = b.persona_id')
       .leftJoin('municipio', 'm', 'm.municipio_id = p.municipio_id')
+      .leftJoin('departamento', 'd', 'd.departamento_id = m.departamento_id')
       .leftJoin('locacion', 'l', 'l.locacion_id = p.locacion_id')
       .select('b.beneficiario_id', 'beneficiarioId')
       .addSelect('b.estado_id', 'estadoId')
@@ -35,6 +49,8 @@ export class BeneficiariosService {
       .addSelect('p.telefono', 'telefono')
       .addSelect('m.municipio_id', 'municipioId')
       .addSelect('m.nombre_municipio', 'nombreMunicipio')
+      .addSelect('d.departamento_id', 'departamentoId')
+      .addSelect('d.nombre_departamento', 'nombreDepartamento')
       .addSelect('l.locacion_id', 'locacionId')
       .addSelect('l.nombre_locacion', 'nombreLocacion')
       .orderBy('p.primer_apellido', 'ASC')
@@ -46,6 +62,9 @@ export class BeneficiariosService {
     if (filters?.municipioId !== undefined) {
       qb.andWhere('p.municipio_id = :municipioId', { municipioId: filters.municipioId });
     }
+    if (filters?.departamentoId !== undefined) {
+      qb.andWhere('m.departamento_id = :departamentoId', { departamentoId: filters.departamentoId });
+    }
     if (filters?.q) {
       const q = `%${filters.q.trim()}%`;
       qb.andWhere(
@@ -53,9 +72,64 @@ export class BeneficiariosService {
         { q },
       );
     }
+    if (filters?.nombre) {
+      const n = `%${filters.nombre.trim()}%`;
+      qb.andWhere(
+        'p.primer_nombre LIKE :n OR p.segundo_nombre LIKE :n OR p.tercer_nombre LIKE :n OR p.primer_apellido LIKE :n OR p.segundo_apellido LIKE :n',
+        { n },
+      );
+    }
+    if (filters?.numeroDocumento) {
+      const nd = `%${filters.numeroDocumento.trim()}%`;
+      qb.andWhere('p.numero_documento LIKE :nd', { nd });
+    }
+    if (filters?.fechaInicioDesde) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.fechaInicioDesde)) {
+        throw new BadRequestException('fechaInicioDesde debe tener formato YYYY-MM-DD');
+      }
+      qb.andWhere('b.fecha_inicio >= :fechaInicioDesde', { fechaInicioDesde: filters.fechaInicioDesde });
+    }
+    if (filters?.fechaInicioHasta) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.fechaInicioHasta)) {
+        throw new BadRequestException('fechaInicioHasta debe tener formato YYYY-MM-DD');
+      }
+      qb.andWhere('b.fecha_inicio <= :fechaInicioHasta', { fechaInicioHasta: filters.fechaInicioHasta });
+    }
+
+    // Pagination: prefer start/end; else page/pageSize; else no pagination
+    const useRange =
+      typeof filters?.start === 'number' && Number.isFinite(filters.start) &&
+      typeof filters?.end === 'number' && Number.isFinite(filters.end);
+    const usePage =
+      typeof filters?.page === 'number' && filters.page > 0 &&
+      typeof filters?.pageSize === 'number' && filters.pageSize > 0;
+
+    let startIdx: number | undefined;
+    let endIdx: number | undefined;
+    let page: number | undefined;
+    let pageSize: number | undefined;
+
+    if (useRange) {
+      startIdx = Math.max(0, Math.floor(filters!.start!));
+      endIdx = Math.max(startIdx, Math.floor(filters!.end!));
+    } else if (usePage) {
+      page = Math.floor(filters!.page!);
+      pageSize = Math.min(Math.floor(filters!.pageSize!), 100);
+    }
+
+    const countQb = qb.clone();
+    const total = await countQb.getCount();
+
+    if (useRange) {
+      const take = endIdx! - startIdx! + 1; // inclusive end
+      qb.offset(startIdx!).limit(Math.max(0, take));
+    } else if (usePage) {
+      const skip = (page! - 1) * pageSize!;
+      qb.offset(skip).limit(pageSize!);
+    } // else: no pagination, return all
 
     const rows = await qb.getRawMany();
-    return rows.map((r) => ({
+    const items = rows.map((r) => ({
       beneficiarioId: r.beneficiarioId,
       estadoId: r.estadoId,
       fechaInicio: r.fechaInicio,
@@ -72,11 +146,23 @@ export class BeneficiariosService {
         numeroDocumento: r.numeroDocumento,
         telefono: r.telefono,
         municipio: r.municipioId
-          ? { municipioId: r.municipioId, nombreMunicipio: r.nombreMunicipio }
+          ? {
+              municipioId: r.municipioId,
+              nombreMunicipio: r.nombreMunicipio,
+              departamento: r.departamentoId
+                ? { departamentoId: r.departamentoId, nombreDepartamento: r.nombreDepartamento }
+                : null,
+            }
           : null,
         locacion: r.locacionId ? { locacionId: r.locacionId, nombreLocacion: r.nombreLocacion } : null,
       },
     }));
+
+    if (useRange) {
+      return { total, start: startIdx!, end: endIdx!, items };
+    }
+    // No page/pageSize in response (frontend no los requiere)
+    return { total, items };
   }
 
   async crear(dto: CreateBeneficiarioDto) {
