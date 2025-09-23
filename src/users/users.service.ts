@@ -33,7 +33,7 @@ export class UsersService {
     const qb = this.usuarioRepo
       .createQueryBuilder('u')
       .leftJoin('rol', 'r', 'r.rol_id = u.rol_id')
-      .leftJoin('cat_estados', 'e', 'e.estado_id = u.estado_id')
+      .leftJoin('cat_estados', 'e', "e.estado_id = u.estado_id AND e.tipo_estado = 'U'")
       .select('u.usuario_id', 'usuarioId')
       .addSelect('u.nombre_usuario', 'nombreUsuario')
       .addSelect('u.correo_electronico', 'correoElectronico')

@@ -24,6 +24,14 @@ import { LocacionesService } from './locaciones/locaciones.service';
 import { Proyecto } from './entities/proyecto.entity';
 import { ProyectosController } from './proyectos/proyectos.controller';
 import { ProyectosService } from './proyectos/proyectos.service';
+import { ProyectosUsuariosController } from './proyectos/usuarios-proyecto/usuarios-proyecto.controller';
+import { ProyectosUsuariosService } from './proyectos/usuarios-proyecto/usuarios-proyecto.service';
+import { ProyectosBeneficiariosController } from './proyectos/beneficiarios-proyecto/beneficiarios-proyecto.controller';
+import { ProyectosBeneficiariosService } from './proyectos/beneficiarios-proyecto/beneficiarios-proyecto.service';
+import { ProyectosActividadesController } from './proyectos/actividades/actividades.controller';
+import { ProyectosActividadesService } from './proyectos/actividades/actividades.service';
+import { ProyectosAsistenciasController } from './proyectos/asistencias/asistencias.controller';
+import { ProyectosAsistenciasService } from './proyectos/asistencias/asistencias.service';
 import { Estado } from './entities/estado.entity';
 import { UsuarioProyecto } from './entities/usuario-proyecto.entity';
 import { BeneficiarioProyecto } from './entities/beneficiario-proyecto.entity';
@@ -91,6 +99,10 @@ import { Asistencia } from './entities/asistencia.entity';
     CatalogosController,
     LocacionesController,
     ProyectosController,
+    ProyectosUsuariosController,
+    ProyectosBeneficiariosController,
+    ProyectosActividadesController,
+    ProyectosAsistenciasController,
   ],
   providers: [
     AppService,
@@ -99,6 +111,10 @@ import { Asistencia } from './entities/asistencia.entity';
     CatalogosService,
     LocacionesService,
     ProyectosService,
+    ProyectosUsuariosService,
+    ProyectosBeneficiariosService,
+    ProyectosActividadesService,
+    ProyectosAsistenciasService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
