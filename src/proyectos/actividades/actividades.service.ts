@@ -117,4 +117,43 @@ export class ProyectosActividadesService {
       lugar: row.lugar,
     };
   }
+
+  async reemplazarActividad(proyectoId: number, actividadId: number, dto: CreateActividadDto) {
+    if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
+      throw new BadRequestException('proyectoId inválido');
+    }
+    if (!Number.isInteger(actividadId) || actividadId <= 0) {
+      throw new BadRequestException('actividadId inválido');
+    }
+
+    const proyecto = await this.proyectoRepo.findOne({ where: { proyectoId } });
+    if (!proyecto) {
+      throw new NotFoundException('No se encontró el proyecto indicado');
+    }
+
+    const actividad = await this.actividadRepo.findOne({ where: { actividadId }, relations: ['proyecto'] });
+    if (!actividad || actividad.proyecto.proyectoId !== proyectoId) {
+      throw new NotFoundException('No se encontró la actividad para el proyecto indicado');
+    }
+
+    if (!dto.nombreActividad?.trim()) {
+      throw new BadRequestException('nombreActividad es requerido');
+    }
+    if (!dto.tipoActividad?.trim()) {
+      throw new BadRequestException('tipoActividad es requerido');
+    }
+    if (!dto.fechaActividad || !/^\d{4}-\d{2}-\d{2}$/.test(dto.fechaActividad)) {
+      throw new BadRequestException('fechaActividad debe tener formato YYYY-MM-DD');
+    }
+
+    // Reemplazo completo de campos modificables
+    actividad.nombreActividad = dto.nombreActividad.trim();
+    actividad.tipoActividad = dto.tipoActividad.trim();
+    actividad.descripcion = dto.descripcion ?? null;
+    actividad.fechaActividad = dto.fechaActividad;
+    actividad.lugar = dto.lugar?.trim() ?? null;
+
+    const saved = await this.actividadRepo.save(actividad);
+    return { message: `La actividad '${saved.nombreActividad}' se actualizó correctamente` };
+  }
 }

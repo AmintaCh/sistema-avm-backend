@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
@@ -22,5 +22,10 @@ export class UsersController {
   @Public()
   async login(@Body() body: LoginDto) {
     return this.usersService.login(body);
+  }
+
+  @Get(':usuarioId/proyectos')
+  async proyectosDeUsuario(@Param('usuarioId', ParseIntPipe) usuarioId: number) {
+    return this.usersService.obtenerResumenProyectosUsuario(usuarioId);
   }
 }

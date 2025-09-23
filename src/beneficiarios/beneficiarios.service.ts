@@ -282,4 +282,87 @@ export class BeneficiariosService {
       },
     };
   }
+
+  async reemplazar(beneficiarioId: number, dto: CreateBeneficiarioDto) {
+    if (!Number.isInteger(beneficiarioId) || beneficiarioId <= 0) {
+      throw new BadRequestException('beneficiarioId inválido');
+    }
+
+    // Validaciones mínimas (mismas que crear)
+    if (!dto.primerNombre || !dto.primerApellido) {
+      throw new BadRequestException('primer_nombre y primer_apellido son requeridos');
+    }
+    if (!dto.tipoDocumento || !dto.numeroDocumento) {
+      throw new BadRequestException('tipo_documento y numero_documento son requeridos');
+    }
+    if (!dto.municipioId) {
+      throw new BadRequestException('municipio_id es requerido');
+    }
+    if (!dto.estadoId && dto.estadoId !== 0) {
+      throw new BadRequestException('estado_id es requerido');
+    }
+    if (!dto.fechaInicio) {
+      throw new BadRequestException('fecha_inicio es requerido');
+    }
+    if (!dto.latitud || !dto.longitud) {
+      throw new BadRequestException('latitud y longitud son requeridos');
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const beneficiario = await manager.findOne(Beneficiario, {
+        where: { beneficiarioId },
+        relations: ['persona'],
+      });
+      if (!beneficiario) {
+        throw new NotFoundException('No se encontró el beneficiario indicado');
+      }
+
+      const persona = beneficiario.persona;
+
+      // Verificar unicidad de numero_documento si cambia
+      if (dto.numeroDocumento && dto.numeroDocumento !== persona.numeroDocumento) {
+        const docExistente = await manager.findOne(Persona, { where: { numeroDocumento: dto.numeroDocumento } });
+        if (docExistente && docExistente.personaId !== persona.personaId) {
+          throw new BadRequestException('El numero_documento ya existe');
+        }
+      }
+
+      // Reemplazo de Persona
+      persona.primerNombre = dto.primerNombre;
+      persona.segundoNombre = dto.segundoNombre ?? null;
+      persona.tercerNombre = dto.tercerNombre ?? null;
+      persona.primerApellido = dto.primerApellido;
+      persona.segundoApellido = dto.segundoApellido ?? null;
+      persona.fechaNacimiento = dto.fechaNacimiento ?? null;
+      persona.genero = dto.genero ?? null;
+      persona.tipoDocumento = dto.tipoDocumento;
+      persona.numeroDocumento = dto.numeroDocumento;
+      persona.direccionDetalle = dto.direccionDetalle ?? null;
+      persona.municipioId = dto.municipioId;
+      persona.locacionId = dto.locacionId ?? null;
+      persona.telefono = dto.telefono ?? null;
+
+      await manager.save(Persona, persona);
+
+      // Reemplazo de Beneficiario
+      beneficiario.estadoId = dto.estadoId!;
+      beneficiario.fechaInicio = dto.fechaInicio;
+      beneficiario.latitud = dto.latitud;
+      beneficiario.longitud = dto.longitud;
+
+      const saved = await manager.save(Beneficiario, beneficiario);
+
+      const nombreCompleto = [
+        persona.primerNombre,
+        persona.segundoNombre,
+        persona.tercerNombre,
+        persona.primerApellido,
+        persona.segundoApellido,
+      ]
+        .filter((p) => (p ?? '').toString().trim().length > 0)
+        .join(' ');
+
+      return { message: `El beneficiario '${nombreCompleto}' se actualizó correctamente` };
+    });
+  }
 }

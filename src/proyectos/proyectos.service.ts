@@ -102,4 +102,42 @@ export class ProyectosService {
   }
 
   // Métodos de usuarios, beneficiarios, actividades y asistencias se movieron a servicios dedicados
+
+  // Reemplazo completo via PUT
+  async reemplazar(proyectoId: number, dto: CreateProyectoDto) {
+    if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
+      throw new BadRequestException('proyectoId inválido');
+    }
+
+    const proyecto = await this.proyectoRepo.findOne({ where: { proyectoId } });
+    if (!proyecto) {
+      throw new NotFoundException('No se encontró el proyecto indicado');
+    }
+
+    // Validaciones similares a crear
+    if (!dto.nombreProyecto || !dto.nombreProyecto.trim()) {
+      throw new BadRequestException('nombre_proyecto es requerido');
+    }
+    if (!dto.fechaInicio) {
+      throw new BadRequestException('fecha_inicio es requerido');
+    }
+    if (dto.estadoId === undefined || dto.estadoId === null) {
+      throw new BadRequestException('estado_id es requerido');
+    }
+    if (dto.fechaFin && dto.fechaFin < dto.fechaInicio) {
+      throw new BadRequestException('fecha_fin no puede ser anterior a fecha_inicio');
+    }
+
+    // Asignación completa (reemplazo)
+    proyecto.nombreProyecto = dto.nombreProyecto.trim();
+    proyecto.descripcion = dto.descripcion ?? null;
+    proyecto.fechaInicio = dto.fechaInicio;
+    proyecto.fechaFin = dto.fechaFin ?? null;
+    proyecto.estadoId = dto.estadoId;
+
+    const saved = await this.proyectoRepo.save(proyecto);
+    return {
+      message: `El proyecto '${saved.nombreProyecto}' se actualizó correctamente`,
+    };
+  }
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -8,6 +8,9 @@ import { Usuario } from '../entities/usuario.entity';
 import { Rol } from '../entities/rol.entity';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
+import { Proyecto } from '../entities/proyecto.entity';
+import { UsuarioProyecto } from '../entities/usuario-proyecto.entity';
+import { BeneficiarioProyecto } from '../entities/beneficiario-proyecto.entity';
 
 type RegistroUsuarioResultado = {
   usuarioId: number;
@@ -26,6 +29,11 @@ export class UsersService {
     @InjectRepository(Persona) private readonly personaRepo: Repository<Persona>,
     @InjectRepository(Usuario) private readonly usuarioRepo: Repository<Usuario>,
     @InjectRepository(Rol) private readonly rolRepo: Repository<Rol>,
+    @InjectRepository(Proyecto) private readonly proyectoRepo: Repository<Proyecto>,
+    @InjectRepository(UsuarioProyecto)
+    private readonly usuarioProyectoRepo: Repository<UsuarioProyecto>,
+    @InjectRepository(BeneficiarioProyecto)
+    private readonly benefProyectoRepo: Repository<BeneficiarioProyecto>,
     private readonly jwt: JwtService,
   ) {}
 
@@ -242,6 +250,7 @@ export class UsersService {
     const expiresInSec = 60 * 60; // 1 hora (coincide con JwtModule)
     const payload = {
       sub: user.usuarioId,
+      userId: user.usuarioId, // incluir userId explícito en el token
       username: user.nombreUsuario,
       rolId: user.rol.rolId,
       personaId: user.persona.personaId,
@@ -249,19 +258,69 @@ export class UsersService {
     };
     const token = await this.jwt.signAsync(payload);
 
+    // Retornar solo el token para no exponer datos del usuario ni metadatos
     return {
       accessToken: token,
-      tokenType: 'Bearer',
-      expiresIn: expiresInSec,
-      usuario: {
-        usuarioId: user.usuarioId,
-        nombreUsuario: user.nombreUsuario,
-        correoElectronico: user.correoElectronico,
-        rol: { rolId: user.rol.rolId, nombreRol: user.rol.nombreRol },
-        estadoId: user.estadoId,
-      },
     };
   }
 
   // JwtService se encarga del firmado/verificación
+
+  async obtenerResumenProyectosUsuario(usuarioId: number) {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new BadRequestException('usuarioId inválido');
+    }
+
+    const usuario = await this.usuarioRepo.findOne({ where: { usuarioId } });
+    if (!usuario) {
+      throw new NotFoundException('No se encontró el usuario indicado');
+    }
+
+    // Listado de proyectos asociados al usuario
+    const proyectosRaw = await this.proyectoRepo
+      .createQueryBuilder('p')
+      .innerJoin('usuarios_x_proyecto', 'up', 'up.proyecto_id = p.proyecto_id')
+      .leftJoin('cat_estados', 'e', "e.estado_id = p.estado_id AND e.tipo_estado = 'P'")
+      .select('p.proyecto_id', 'proyectoId')
+      .addSelect('p.nombre_proyecto', 'nombreProyecto')
+      .addSelect('p.descripcion', 'descripcion')
+      .addSelect('p.fecha_inicio', 'fechaInicio')
+      .addSelect('p.fecha_fin', 'fechaFin')
+      .addSelect('p.estado_id', 'estadoId')
+      .addSelect('e.descripcion', 'estadoNombre')
+      .where('up.usuario_id = :usuarioId', { usuarioId })
+      .andWhere('p.estado_id = :estadoActivo', { estadoActivo: 1 })
+      .orderBy('p.nombre_proyecto', 'ASC')
+      .getRawMany();
+
+    const proyectos = proyectosRaw.map((r) => ({
+      proyectoId: r.proyectoId,
+      nombreProyecto: r.nombreProyecto,
+      descripcion: r.descripcion,
+      fechaInicio: r.fechaInicio,
+      fechaFin: r.fechaFin,
+      estado: { estadoId: r.estadoId, nombre: r.estadoNombre },
+    }));
+
+    const totalProyectos = proyectos.length;
+
+    // Total de beneficiarios distintos en los proyectos asociados al usuario
+    const totalBenefRaw = await this.benefProyectoRepo
+      .createQueryBuilder('bp')
+      .innerJoin('usuarios_x_proyecto', 'up', 'up.proyecto_id = bp.proyecto_id')
+      .innerJoin('proyecto', 'p', 'p.proyecto_id = bp.proyecto_id')
+      .where('up.usuario_id = :usuarioId', { usuarioId })
+      .andWhere('p.estado_id = :estadoActivo', { estadoActivo: 1 })
+      .select('COUNT(DISTINCT bp.beneficiario_id)', 'total')
+      .getRawOne<{ total: string | number }>();
+
+    const totalBeneficiarios = totalBenefRaw ? Number(totalBenefRaw.total) || 0 : 0;
+
+    return {
+      usuarioId,
+      totalProyectos,
+      totalBeneficiarios,
+      proyectos,
+    };
+  }
 }

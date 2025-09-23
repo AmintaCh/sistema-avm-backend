@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ProyectosService } from './proyectos.service';
 import { CreateProyectoDto } from './dto/create-proyecto.dto';
 
@@ -30,6 +30,15 @@ export class ProyectosController {
       throw new BadRequestException('id inválido');
     }
     return this.svc.buscarPorProyectoId(proyectoId);
+  }
+
+  @Put(':id')
+  async reemplazar(@Param('id') id: string, @Body() body: CreateProyectoDto) {
+    const proyectoId = parseInt(id, 10);
+    if (Number.isNaN(proyectoId)) {
+      throw new BadRequestException('id inválido');
+    }
+    return this.svc.reemplazar(proyectoId, body);
   }
 
   // Endpoints de proyectos (solo nivel raíz)
