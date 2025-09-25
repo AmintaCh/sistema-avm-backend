@@ -37,6 +37,13 @@ import { UsuarioProyecto } from './entities/usuario-proyecto.entity';
 import { BeneficiarioProyecto } from './entities/beneficiario-proyecto.entity';
 import { Actividad } from './entities/actividad.entity';
 import { Asistencia } from './entities/asistencia.entity';
+import { UsuarioSettings } from './entities/usuario-settings.entity';
+import { Beneficio } from './entities/beneficio.entity';
+import { BeneficiosController } from './beneficios/beneficios.controller';
+import { BeneficiosService } from './beneficios/beneficios.service';
+import { BeneficioProyecto } from './entities/beneficio-proyecto.entity';
+import { ProyectosBeneficiosController } from './proyectos/beneficios-proyecto/beneficios-proyecto.controller';
+import { ProyectosBeneficiosService } from './proyectos/beneficios-proyecto/beneficios-proyecto.service';
 
 @Module({
   imports: [
@@ -62,8 +69,11 @@ import { Asistencia } from './entities/asistencia.entity';
         Estado,
         UsuarioProyecto,
         BeneficiarioProyecto,
+        BeneficioProyecto,
         Actividad,
         Asistencia,
+        Beneficio,
+        UsuarioSettings,
       ],
       synchronize: false,
       // logging: true,
@@ -80,8 +90,11 @@ import { Asistencia } from './entities/asistencia.entity';
       Estado,
       UsuarioProyecto,
       BeneficiarioProyecto,
+      BeneficioProyecto,
       Actividad,
       Asistencia,
+      Beneficio,
+      UsuarioSettings,
     ]),
     JwtModule.registerAsync({
       global: true,
@@ -103,6 +116,8 @@ import { Asistencia } from './entities/asistencia.entity';
     ProyectosBeneficiariosController,
     ProyectosActividadesController,
     ProyectosAsistenciasController,
+    BeneficiosController,
+    ProyectosBeneficiosController,
   ],
   providers: [
     AppService,
@@ -115,6 +130,8 @@ import { Asistencia } from './entities/asistencia.entity';
     ProyectosBeneficiariosService,
     ProyectosActividadesService,
     ProyectosAsistenciasService,
+    BeneficiosService,
+    ProyectosBeneficiosService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })

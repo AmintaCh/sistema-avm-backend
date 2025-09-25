@@ -36,17 +36,34 @@ export class ProyectosAsistenciasService {
       throw new NotFoundException('No se encontró el beneficiario indicado');
     }
 
-    if (!dto.fechaRegistro || !/^\d{4}-\d{2}-\d{2}$/.test(dto.fechaRegistro)) {
-      throw new BadRequestException('fechaRegistro debe tener formato YYYY-MM-DD');
+    // Evitar duplicados: una asistencia por actividad y beneficiario
+    const yaExiste = await this.asistenciaRepo
+      .createQueryBuilder('as')
+      .where('as.actividad_id = :actividadId AND as.beneficiario_id = :beneficiarioId', {
+        actividadId,
+        beneficiarioId,
+      })
+      .getExists();
+    if (yaExiste) {
+      throw new BadRequestException(
+        'Ya existe una asistencia para este beneficiario en la actividad indicada',
+      );
+    }
+
+    // Acepta 'YYYY-MM-DD' o ISO datetime 'YYYY-MM-DDThh:mm:ss(...)'
+    if (!dto.fechaRegistro || typeof dto.fechaRegistro !== 'string' || !/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(dto.fechaRegistro)) {
+      throw new BadRequestException('fechaRegistro debe tener formato YYYY-MM-DD o ISO YYYY-MM-DDThh:mm:ss');
     }
     if (!Number.isInteger(dto.estadoId)) {
       throw new BadRequestException('estadoId inválido');
     }
 
+    // Normaliza a 'YYYY-MM-DD' si viene con tiempo (ISO)
+    const fechaNormalizada = dto.fechaRegistro.split('T')[0];
     const entity = this.asistenciaRepo.create({
       actividad,
       beneficiario,
-      fechaRegistro: dto.fechaRegistro,
+      fechaRegistro: fechaNormalizada,
       estadoId: dto.estadoId,
       observaciones: dto.observaciones ?? null,
     });
@@ -81,6 +98,8 @@ export class ProyectosAsistenciasService {
       .createQueryBuilder('as')
       .innerJoin('beneficiario', 'b', 'b.beneficiario_id = as.beneficiario_id')
       .leftJoin('persona', 'p', 'p.persona_id = b.persona_id')
+      .leftJoin('municipio', 'm', 'm.municipio_id = p.municipio_id')
+      .leftJoin('departamento', 'd', 'd.departamento_id = m.departamento_id')
       .select('as.asistencia_id', 'asistenciaId')
       .addSelect('as.actividad_id', 'actividadId')
       .addSelect('as.beneficiario_id', 'beneficiarioId')
@@ -88,7 +107,12 @@ export class ProyectosAsistenciasService {
       .addSelect('as.estado_id', 'estadoId')
       .addSelect('as.observaciones', 'observaciones')
       .addSelect('p.primer_nombre', 'primerNombre')
+      .addSelect('p.segundo_nombre', 'segundoNombre')
+      .addSelect('p.tercer_nombre', 'tercerNombre')
       .addSelect('p.primer_apellido', 'primerApellido')
+      .addSelect('p.segundo_apellido', 'segundoApellido')
+      .addSelect('m.nombre_municipio', 'nombreMunicipio')
+      .addSelect('d.nombre_departamento', 'nombreDepartamento')
       .where('as.actividad_id = :actividadId', { actividadId })
       .orderBy('as.fecha_registro', 'DESC')
       .addOrderBy('as.asistencia_id', 'DESC')
@@ -104,8 +128,13 @@ export class ProyectosAsistenciasService {
       beneficiario: {
         beneficiarioId: r.beneficiarioId,
         persona: {
-          primerNombre: r.primerNombre,
-          primerApellido: r.primerApellido,
+          primerNombre: r.primerNombre ?? null,
+          segundoNombre: r.segundoNombre ?? null,
+          tercerNombre: r.tercerNombre ?? null,
+          primerApellido: r.primerApellido ?? null,
+          segundoApellido: r.segundoApellido ?? null,
+          departamento: r.nombreDepartamento ?? null,
+          municipio: r.nombreMunicipio ?? null,
         },
       },
     }));
@@ -138,17 +167,19 @@ export class ProyectosAsistenciasService {
       throw new NotFoundException('No se encontró la actividad para el proyecto indicado');
     }
 
-    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    // Acepta 'YYYY-MM-DD' o ISO datetime 'YYYY-MM-DDThh:mm:ss(...)'
+    const dateOrIsoRe = /^\d{4}-\d{2}-\d{2}(T.*)?$/;
     const sanitized = payload.items.map((it, idx) => {
       const beneficiarioId = Number(it?.beneficiarioId);
       const estadoId = Number(it?.estadoId);
-      const fechaRegistro = it?.fechaRegistro;
+      const fechaRegistroRaw = it?.fechaRegistro;
       if (!Number.isInteger(beneficiarioId) || beneficiarioId <= 0) {
         throw new BadRequestException(`items[${idx}].beneficiarioId inválido`);
       }
-      if (typeof fechaRegistro !== 'string' || !dateRe.test(fechaRegistro)) {
-        throw new BadRequestException(`items[${idx}].fechaRegistro inválido (YYYY-MM-DD)`);
+      if (typeof fechaRegistroRaw !== 'string' || !dateOrIsoRe.test(fechaRegistroRaw)) {
+        throw new BadRequestException(`items[${idx}].fechaRegistro inválido (YYYY-MM-DD o ISO YYYY-MM-DDThh:mm:ss)`);
       }
+      const fechaRegistro = fechaRegistroRaw.split('T')[0];
       if (!Number.isInteger(estadoId)) {
         throw new BadRequestException(`items[${idx}].estadoId inválido`);
       }

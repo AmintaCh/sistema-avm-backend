@@ -11,6 +11,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Proyecto } from '../entities/proyecto.entity';
 import { UsuarioProyecto } from '../entities/usuario-proyecto.entity';
 import { BeneficiarioProyecto } from '../entities/beneficiario-proyecto.entity';
+import { UsuarioSettings } from '../entities/usuario-settings.entity';
+import { UserSettingsDto } from './dto/user-settings.dto';
 
 type RegistroUsuarioResultado = {
   usuarioId: number;
@@ -34,8 +36,125 @@ export class UsersService {
     private readonly usuarioProyectoRepo: Repository<UsuarioProyecto>,
     @InjectRepository(BeneficiarioProyecto)
     private readonly benefProyectoRepo: Repository<BeneficiarioProyecto>,
+    @InjectRepository(UsuarioSettings)
+    private readonly userSettingsRepo: Repository<UsuarioSettings>,
     private readonly jwt: JwtService,
   ) {}
+
+  private validarSettingsDto(dto: UserSettingsDto) {
+    if (!dto || typeof dto !== 'object') {
+      throw new BadRequestException('Body inválido');
+    }
+    const { theme, scheme, layout } = dto as UserSettingsDto;
+    if (!theme || typeof theme !== 'string') {
+      throw new BadRequestException('theme es requerido');
+    }
+    if (!scheme || typeof scheme !== 'string') {
+      throw new BadRequestException('scheme es requerido');
+    }
+    const allowedSchemes = new Set(['light', 'dark', 'auto']);
+    if (!allowedSchemes.has(scheme)) {
+      throw new BadRequestException("scheme debe ser 'light', 'dark' o 'auto'");
+    }
+    if (!layout || typeof layout !== 'string') {
+      throw new BadRequestException('layout es requerido');
+    }
+  }
+
+  async crearSettings(usuarioId: number, dto: UserSettingsDto) {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new BadRequestException('usuarioId inválido');
+    }
+    this.validarSettingsDto(dto);
+
+    const usuario = await this.usuarioRepo.findOne({ where: { usuarioId } });
+    if (!usuario) {
+      throw new NotFoundException('No se encontró el usuario indicado');
+    }
+
+    const existente = await this.userSettingsRepo
+      .createQueryBuilder('s')
+      .leftJoin('usuario', 'u', 'u.usuario_id = s.usuario_id')
+      .where('s.usuario_id = :usuarioId', { usuarioId })
+      .getOne();
+    if (existente) {
+      throw new BadRequestException('Ya existen settings para este usuario (use PUT para actualizar)');
+    }
+
+    const entity = this.userSettingsRepo.create({ usuario, theme: dto.theme, scheme: dto.scheme, layout: dto.layout });
+    const saved = await this.userSettingsRepo.save(entity);
+    return {
+      settingsId: saved.settingsId,
+      usuarioId: usuario.usuarioId,
+      theme: saved.theme,
+      scheme: saved.scheme,
+      layout: saved.layout,
+    };
+  }
+
+  async actualizarSettings(usuarioId: number, dto: UserSettingsDto) {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new BadRequestException('usuarioId inválido');
+    }
+    this.validarSettingsDto(dto);
+
+    const usuario = await this.usuarioRepo.findOne({ where: { usuarioId } });
+    if (!usuario) {
+      throw new NotFoundException('No se encontró el usuario indicado');
+    }
+
+    let settings = await this.userSettingsRepo
+      .createQueryBuilder('s')
+      .where('s.usuario_id = :usuarioId', { usuarioId })
+      .getOne();
+
+    if (!settings) {
+      // upsert: crea si no existe
+      settings = this.userSettingsRepo.create({ usuario, theme: dto.theme, scheme: dto.scheme, layout: dto.layout });
+    } else {
+      settings.theme = dto.theme;
+      settings.scheme = dto.scheme;
+      settings.layout = dto.layout;
+    }
+    const saved = await this.userSettingsRepo.save(settings);
+    return {
+      settingsId: saved.settingsId,
+      usuarioId: usuario.usuarioId,
+      theme: saved.theme,
+      scheme: saved.scheme,
+      layout: saved.layout,
+    };
+  }
+
+  async obtenerSettings(usuarioId: number) {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new BadRequestException('usuarioId inválido');
+    }
+
+    const settings = await this.userSettingsRepo
+      .createQueryBuilder('s')
+      .where('s.usuario_id = :usuarioId', { usuarioId })
+      .getOne();
+
+    if (!settings) {
+      // No 404: devolver objeto vacío para que el frontend asigne defaults
+      return {
+        settingsId: null,
+        usuarioId,
+        theme: null,
+        scheme: null,
+        layout: null,
+      } as any;
+    }
+
+    return {
+      settingsId: settings.settingsId,
+      usuarioId,
+      theme: settings.theme,
+      scheme: settings.scheme,
+      layout: settings.layout,
+    };
+  }
 
   async listar() {
     const qb = this.usuarioRepo

@@ -24,8 +24,13 @@ export class ProyectosAsistenciasController {
     if (!body?.beneficiarioId || !Number.isInteger(Number(body.beneficiarioId))) {
       throw new BadRequestException('beneficiarioId inválido');
     }
-    if (!body?.fechaRegistro || !/^\\d{4}-\\d{2}-\\d{2}$/.test(body.fechaRegistro)) {
-      throw new BadRequestException('fechaRegistro es requerida (YYYY-MM-DD)');
+    // Acepta 'YYYY-MM-DD' o ISO datetime 'YYYY-MM-DDThh:mm:ss(...)'
+    if (
+      !body?.fechaRegistro ||
+      (typeof body.fechaRegistro !== 'string') ||
+      !/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(body.fechaRegistro)
+    ) {
+      throw new BadRequestException('fechaRegistro es requerida (YYYY-MM-DD o ISO YYYY-MM-DDThh:mm:ss)');
     }
     if (body?.estadoId === undefined || body?.estadoId === null || !Number.isInteger(Number(body.estadoId))) {
       throw new BadRequestException('estadoId inválido');

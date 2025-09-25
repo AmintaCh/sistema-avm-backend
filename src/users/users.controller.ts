@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from '../auth/public.decorator';
+import { UserSettingsDto } from './dto/user-settings.dto';
 
 @Controller('users')
 export class UsersController {
@@ -27,5 +28,18 @@ export class UsersController {
   @Get(':usuarioId/proyectos')
   async proyectosDeUsuario(@Param('usuarioId', ParseIntPipe) usuarioId: number) {
     return this.usersService.obtenerResumenProyectosUsuario(usuarioId);
+  }
+
+  @Put(':usuarioId/settings')
+  async actualizarSettings(
+    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Body() body: UserSettingsDto,
+  ) {
+    return this.usersService.actualizarSettings(usuarioId, body);
+  }
+
+  @Get(':usuarioId/settings')
+  async obtenerSettings(@Param('usuarioId', ParseIntPipe) usuarioId: number) {
+    return this.usersService.obtenerSettings(usuarioId);
   }
 }

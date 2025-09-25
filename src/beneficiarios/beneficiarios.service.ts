@@ -46,6 +46,7 @@ export class BeneficiariosService {
       .addSelect('p.segundo_apellido', 'segundoApellido')
       .addSelect('p.tipo_documento', 'tipoDocumento')
       .addSelect('p.numero_documento', 'numeroDocumento')
+      .addSelect('p.genero', 'genero')
       .addSelect('p.telefono', 'telefono')
       .addSelect('m.municipio_id', 'municipioId')
       .addSelect('m.nombre_municipio', 'nombreMunicipio')
@@ -142,6 +143,7 @@ export class BeneficiariosService {
         tercerNombre: r.tercerNombre,
         primerApellido: r.primerApellido,
         segundoApellido: r.segundoApellido,
+        genero: r.genero,
         tipoDocumento: r.tipoDocumento,
         numeroDocumento: r.numeroDocumento,
         telefono: r.telefono,
@@ -246,6 +248,7 @@ export class BeneficiariosService {
       .addSelect('p.segundo_apellido', 'segundoApellido')
       .addSelect('p.tipo_documento', 'tipoDocumento')
       .addSelect('p.numero_documento', 'numeroDocumento')
+      .addSelect('p.genero', 'genero')
       .addSelect('p.telefono', 'telefono')
       .addSelect('m.municipio_id', 'municipioId')
       .addSelect('m.nombre_municipio', 'nombreMunicipio')
@@ -272,6 +275,7 @@ export class BeneficiariosService {
         tercerNombre: r.tercerNombre,
         primerApellido: r.primerApellido,
         segundoApellido: r.segundoApellido,
+        genero: r.genero,
         tipoDocumento: r.tipoDocumento,
         numeroDocumento: r.numeroDocumento,
         telefono: r.telefono,
