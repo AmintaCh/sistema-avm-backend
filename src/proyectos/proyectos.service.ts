@@ -8,7 +8,7 @@ import { CreateProyectoDto } from './dto/create-proyecto.dto';
 export class ProyectosService {
   constructor(@InjectRepository(Proyecto) private readonly proyectoRepo: Repository<Proyecto>) {}
 
-  async listar(estadoId?: number) {
+  async listar(filters?: { estadoId?: number; usuarioId?: number }) {
     const qb = this.proyectoRepo
       .createQueryBuilder('p')
       .leftJoin('cat_estados', 'e', "e.estado_id = p.estado_id AND e.tipo_estado = 'P'")
@@ -19,10 +19,20 @@ export class ProyectosService {
       .addSelect('p.fecha_fin', 'fechaFin')
       .addSelect('p.estado_id', 'estadoId')
       .addSelect('e.descripcion', 'estadoNombre')
-      .orderBy('p.nombre_proyecto', 'ASC');
+      .orderBy('p.nombre_proyecto', 'ASC')
+      .distinct(true);
 
-    if (typeof estadoId === 'number') {
-      qb.where('p.estado_id = :estadoId', { estadoId });
+    if (typeof filters?.estadoId === 'number') {
+      qb.where('p.estado_id = :estadoId', { estadoId: filters.estadoId });
+    }
+
+    if (typeof filters?.usuarioId === 'number') {
+      qb.innerJoin('usuarios_x_proyecto', 'up', 'up.proyecto_id = p.proyecto_id');
+      if (typeof filters?.estadoId === 'number') {
+        qb.andWhere('up.usuario_id = :usuarioId', { usuarioId: filters.usuarioId });
+      } else {
+        qb.where('up.usuario_id = :usuarioId', { usuarioId: filters.usuarioId });
+      }
     }
 
     const rows = await qb.getRawMany();

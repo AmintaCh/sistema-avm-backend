@@ -39,11 +39,17 @@ import { Actividad } from './entities/actividad.entity';
 import { Asistencia } from './entities/asistencia.entity';
 import { UsuarioSettings } from './entities/usuario-settings.entity';
 import { Beneficio } from './entities/beneficio.entity';
+import { EntregaBeneficio } from './entities/entrega-beneficio.entity';
+import { EventoEntrega } from './entities/evento-entrega.entity';
 import { BeneficiosController } from './beneficios/beneficios.controller';
 import { BeneficiosService } from './beneficios/beneficios.service';
 import { BeneficioProyecto } from './entities/beneficio-proyecto.entity';
 import { ProyectosBeneficiosController } from './proyectos/beneficios-proyecto/beneficios-proyecto.controller';
 import { ProyectosBeneficiosService } from './proyectos/beneficios-proyecto/beneficios-proyecto.service';
+import { ProyectosEntregasBeneficiosController } from './proyectos/entregas-beneficios/entregas-beneficios.controller';
+import { ProyectosEntregasBeneficiosService } from './proyectos/entregas-beneficios/entregas-beneficios.service';
+import { ProyectosEventosEntregaController } from './proyectos/eventos-entrega/eventos-entrega.controller';
+import { ProyectosEventosEntregaService } from './proyectos/eventos-entrega/eventos-entrega.service';
 
 @Module({
   imports: [
@@ -73,6 +79,8 @@ import { ProyectosBeneficiosService } from './proyectos/beneficios-proyecto/bene
         Actividad,
         Asistencia,
         Beneficio,
+        EntregaBeneficio,
+        EventoEntrega,
         UsuarioSettings,
       ],
       synchronize: false,
@@ -94,6 +102,8 @@ import { ProyectosBeneficiosService } from './proyectos/beneficios-proyecto/bene
       Actividad,
       Asistencia,
       Beneficio,
+      EntregaBeneficio,
+      EventoEntrega,
       UsuarioSettings,
     ]),
     JwtModule.registerAsync({
@@ -118,6 +128,8 @@ import { ProyectosBeneficiosService } from './proyectos/beneficios-proyecto/bene
     ProyectosAsistenciasController,
     BeneficiosController,
     ProyectosBeneficiosController,
+    ProyectosEntregasBeneficiosController,
+    ProyectosEventosEntregaController,
   ],
   providers: [
     AppService,
@@ -132,6 +144,8 @@ import { ProyectosBeneficiosService } from './proyectos/beneficios-proyecto/bene
     ProyectosAsistenciasService,
     BeneficiosService,
     ProyectosBeneficiosService,
+    ProyectosEntregasBeneficiosService,
+    ProyectosEventosEntregaService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })

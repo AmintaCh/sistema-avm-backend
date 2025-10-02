@@ -7,15 +7,26 @@ export class ProyectosController {
   constructor(private readonly svc: ProyectosService) {}
 
   @Get()
-  async listar(@Query('estadoId') estadoId?: string) {
-    if (typeof estadoId === 'string') {
+  async listar(@Query('estadoId') estadoId?: string, @Query('usuarioId') usuarioId?: string) {
+    const filters: { estadoId?: number; usuarioId?: number } = {};
+
+    if (typeof estadoId === 'string' && estadoId !== '') {
       const id = parseInt(estadoId, 10);
       if (Number.isNaN(id)) {
         throw new BadRequestException('estadoId inválido');
       }
-      return this.svc.listar(id);
+      filters.estadoId = id;
     }
-    return this.svc.listar();
+
+    if (typeof usuarioId === 'string' && usuarioId !== '') {
+      const uid = parseInt(usuarioId, 10);
+      if (Number.isNaN(uid)) {
+        throw new BadRequestException('usuarioId inválido');
+      }
+      filters.usuarioId = uid;
+    }
+
+    return this.svc.listar(filters);
   }
 
   @Post()
