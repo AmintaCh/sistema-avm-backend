@@ -51,6 +51,15 @@ import { ProyectosEntregasPorEventoController } from './proyectos/entregas-benef
 import { ProyectosEntregasBeneficiosService } from './proyectos/entregas-beneficios/entregas-beneficios.service';
 import { ProyectosEventosEntregaController } from './proyectos/eventos-entrega/eventos-entrega.controller';
 import { ProyectosEventosEntregaService } from './proyectos/eventos-entrega/eventos-entrega.service';
+import { BeneficiariosDetalleController } from './beneficiarios-detalle/beneficiarios-detalle.controller';
+import { BeneficiariosDetalleService } from './beneficiarios-detalle/beneficiarios-detalle.service';
+import { BeneficiarioDetalleView } from './reporting/entities/vw-beneficiarios-detalle.view';
+import { BeneficiarioDetalleProyectoView } from './reporting/entities/vw-beneficiarios-detalle-proyecto.view';
+import { BeneficiariosDetalleProyectoController } from './beneficiarios-detalle-proyecto/beneficiarios-detalle-proyecto.controller';
+import { BeneficiariosDetalleProyectoService } from './beneficiarios-detalle-proyecto/beneficiarios-detalle-proyecto.service';
+import { BeneficiarioDetalleAggView } from './reporting/entities/vw-beneficiarios-detalle-agg.view';
+import { BeneficiariosDetalleAggController } from './beneficiarios-detalle-agg/beneficiarios-detalle-agg.controller';
+import { BeneficiariosDetalleAggService } from './beneficiarios-detalle-agg/beneficiarios-detalle-agg.service';
 
 @Module({
   imports: [
@@ -83,6 +92,9 @@ import { ProyectosEventosEntregaService } from './proyectos/eventos-entrega/even
         EntregaBeneficio,
         EventoEntrega,
         UsuarioSettings,
+        BeneficiarioDetalleView,
+        BeneficiarioDetalleProyectoView,
+        BeneficiarioDetalleAggView,
       ],
       synchronize: false,
       // logging: true,
@@ -106,6 +118,9 @@ import { ProyectosEventosEntregaService } from './proyectos/eventos-entrega/even
       EntregaBeneficio,
       EventoEntrega,
       UsuarioSettings,
+      BeneficiarioDetalleView,
+      BeneficiarioDetalleProyectoView,
+      BeneficiarioDetalleAggView,
     ]),
     JwtModule.registerAsync({
       global: true,
@@ -132,6 +147,9 @@ import { ProyectosEventosEntregaService } from './proyectos/eventos-entrega/even
     ProyectosEntregasBeneficiosController,
     ProyectosEntregasPorEventoController,
     ProyectosEventosEntregaController,
+    BeneficiariosDetalleController,
+    BeneficiariosDetalleProyectoController,
+    BeneficiariosDetalleAggController,
   ],
   providers: [
     AppService,
@@ -148,6 +166,9 @@ import { ProyectosEventosEntregaService } from './proyectos/eventos-entrega/even
     ProyectosBeneficiosService,
     ProyectosEntregasBeneficiosService,
     ProyectosEventosEntregaService,
+    BeneficiariosDetalleService,
+    BeneficiariosDetalleProyectoService,
+    BeneficiariosDetalleAggService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
