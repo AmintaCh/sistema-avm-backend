@@ -34,6 +34,174 @@ export class ProyectosEntregasBeneficiosService {
     private readonly usuarioRepo: Repository<Usuario>,
   ) {}
 
+  async listarEntregasPorEvento(
+    proyectoId: number,
+    eventoId: number,
+    filtros?: { beneficiarioId?: number; beneficioId?: number },
+  ) {
+    if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
+      throw new BadRequestException('proyectoId inválido');
+    }
+    if (!Number.isInteger(eventoId) || eventoId <= 0) {
+      throw new BadRequestException('eventoId inválido');
+    }
+
+    const [proyecto, evento] = await Promise.all([
+      this.proyectoRepo.findOne({ where: { proyectoId } }),
+      this.eventoRepo
+        .createQueryBuilder('ev')
+        .where('ev.evento_id = :eventoId AND ev.proyecto_id = :proyectoId', { eventoId, proyectoId })
+        .getOne(),
+    ]);
+    if (!proyecto) {
+      throw new NotFoundException('No se encontró el proyecto indicado');
+    }
+    if (!evento) {
+      throw new NotFoundException('No se encontró el evento indicado para el proyecto');
+    }
+
+    const qb = this.entregaRepo
+      .createQueryBuilder('en')
+      .where('en.proyecto_id = :proyectoId', { proyectoId })
+      .andWhere('en.evento_id = :eventoId', { eventoId })
+      .select('en.entrega_id', 'entregaId')
+      .addSelect('en.proyecto_id', 'proyectoId')
+      .addSelect('en.beneficio_id', 'beneficioId')
+      .addSelect('en.beneficiario_id', 'beneficiarioId')
+      .addSelect('en.evento_id', 'eventoId')
+      .addSelect('en.fecha_entrega', 'fechaEntrega')
+      .addSelect('en.cantidad', 'cantidad')
+      .addSelect('en.estado_id', 'estadoId')
+      .addSelect('en.observaciones', 'observaciones')
+      .addSelect('en.entregado_por', 'entregadoPor')
+      .addSelect('en.created_at', 'createdAt')
+      .orderBy('en.created_at', 'DESC')
+      .addOrderBy('en.entrega_id', 'DESC');
+
+    if (filtros?.beneficiarioId != null) {
+      const beneficiarioId = Number(filtros.beneficiarioId);
+      if (!Number.isInteger(beneficiarioId) || beneficiarioId <= 0) {
+        throw new BadRequestException('beneficiarioId inválido');
+      }
+      qb.andWhere('en.beneficiario_id = :beneficiarioId', { beneficiarioId });
+    }
+
+    if (filtros?.beneficioId != null) {
+      const beneficioId = Number(filtros.beneficioId);
+      if (!Number.isInteger(beneficioId) || beneficioId <= 0) {
+        throw new BadRequestException('beneficioId inválido');
+      }
+      qb.andWhere('en.beneficio_id = :beneficioId', { beneficioId });
+    }
+
+    const rows = await qb.getRawMany();
+    return rows.map((r) => ({
+      entregaId: Number(r.entregaId),
+      proyectoId: Number(r.proyectoId),
+      beneficioId: Number(r.beneficioId),
+      beneficiarioId: Number(r.beneficiarioId),
+      eventoId: r.eventoId != null ? Number(r.eventoId) : null,
+      fechaEntrega: r.fechaEntrega,
+      cantidad: Number(r.cantidad),
+      estadoId: Number(r.estadoId),
+      observaciones: r.observaciones ?? null,
+      entregadoPor: r.entregadoPor != null ? Number(r.entregadoPor) : null,
+      createdAt: r.createdAt,
+    }));
+  }
+
+  async listarEntregas(
+    proyectoId: number,
+    beneficioId: number,
+    filtros?: { eventoId?: number; beneficiarioId?: number; desde?: string; hasta?: string },
+  ) {
+    if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
+      throw new BadRequestException('proyectoId inválido');
+    }
+    if (!Number.isInteger(beneficioId) || beneficioId <= 0) {
+      throw new BadRequestException('beneficioId inválido');
+    }
+
+    // Validar existencia de proyecto y beneficio y su relación
+    const [proyecto, beneficio, asignacion] = await Promise.all([
+      this.proyectoRepo.findOne({ where: { proyectoId } }),
+      this.beneficioRepo.findOne({ where: { beneficioId } }),
+      this.beneficioProyectoRepo.findOne({ where: { proyectoId, beneficioId } }),
+    ]);
+    if (!proyecto) {
+      throw new NotFoundException('No se encontró el proyecto indicado');
+    }
+    if (!beneficio) {
+      throw new NotFoundException('No se encontró el beneficio indicado');
+    }
+    if (!asignacion) {
+      throw new BadRequestException('El beneficio no está asignado al proyecto indicado');
+    }
+
+    const qb = this.entregaRepo
+      .createQueryBuilder('en')
+      .where('en.proyecto_id = :proyectoId', { proyectoId })
+      .andWhere('en.beneficio_id = :beneficioId', { beneficioId })
+      .select('en.entrega_id', 'entregaId')
+      .addSelect('en.proyecto_id', 'proyectoId')
+      .addSelect('en.beneficio_id', 'beneficioId')
+      .addSelect('en.beneficiario_id', 'beneficiarioId')
+      .addSelect('en.evento_id', 'eventoId')
+      .addSelect('en.fecha_entrega', 'fechaEntrega')
+      .addSelect('en.cantidad', 'cantidad')
+      .addSelect('en.estado_id', 'estadoId')
+      .addSelect('en.observaciones', 'observaciones')
+      .addSelect('en.entregado_por', 'entregadoPor')
+      .addSelect('en.created_at', 'createdAt')
+      .orderBy('en.created_at', 'DESC')
+      .addOrderBy('en.entrega_id', 'DESC');
+
+    if (filtros?.eventoId != null) {
+      const eventoId = Number(filtros.eventoId);
+      if (!Number.isInteger(eventoId) || eventoId <= 0) {
+        throw new BadRequestException('eventoId inválido');
+      }
+      qb.andWhere('en.evento_id = :eventoId', { eventoId });
+    }
+
+    if (filtros?.beneficiarioId != null) {
+      const beneficiarioId = Number(filtros.beneficiarioId);
+      if (!Number.isInteger(beneficiarioId) || beneficiarioId <= 0) {
+        throw new BadRequestException('beneficiarioId inválido');
+      }
+      qb.andWhere('en.beneficiario_id = :beneficiarioId', { beneficiarioId });
+    }
+
+    const dateOrIsoRe = /^\d{4}-\d{2}-\d{2}(T.*)?$/;
+    if (filtros?.desde) {
+      if (typeof filtros.desde !== 'string' || !dateOrIsoRe.test(filtros.desde)) {
+        throw new BadRequestException('desde debe tener formato YYYY-MM-DD o ISO YYYY-MM-DDThh:mm:ss');
+      }
+      qb.andWhere('en.fecha_entrega >= :desde', { desde: filtros.desde.split('T')[0] });
+    }
+    if (filtros?.hasta) {
+      if (typeof filtros.hasta !== 'string' || !dateOrIsoRe.test(filtros.hasta)) {
+        throw new BadRequestException('hasta debe tener formato YYYY-MM-DD o ISO YYYY-MM-DDThh:mm:ss');
+      }
+      qb.andWhere('en.fecha_entrega <= :hasta', { hasta: filtros.hasta.split('T')[0] });
+    }
+
+    const rows = await qb.getRawMany();
+    return rows.map((r) => ({
+      entregaId: Number(r.entregaId),
+      proyectoId: Number(r.proyectoId),
+      beneficioId: Number(r.beneficioId),
+      beneficiarioId: Number(r.beneficiarioId),
+      eventoId: r.eventoId != null ? Number(r.eventoId) : null,
+      fechaEntrega: r.fechaEntrega,
+      cantidad: Number(r.cantidad),
+      estadoId: Number(r.estadoId),
+      observaciones: r.observaciones ?? null,
+      entregadoPor: r.entregadoPor != null ? Number(r.entregadoPor) : null,
+      createdAt: r.createdAt,
+    }));
+  }
+
   async crearEntregasEnLote(
     proyectoId: number,
     beneficioId: number,
@@ -139,7 +307,7 @@ export class ProyectosEntregasBeneficiosService {
     const deduped: EntregaSanitizada[] = [];
     const omitidosInternos: Array<{ beneficiarioId: number; fechaEntrega: string }> = [];
     for (const row of sanitized) {
-      const key = `${row.beneficiarioId}|${row.fechaEntrega}`;
+      const key = evento ? `${row.beneficiarioId}` : `${row.beneficiarioId}|${row.fechaEntrega}`;
       if (seen.has(key)) {
         omitidosInternos.push({ beneficiarioId: row.beneficiarioId, fechaEntrega: row.fechaEntrega });
         continue;
@@ -163,19 +331,36 @@ export class ProyectosEntregasBeneficiosService {
       );
     }
 
-    const fechas = [...new Set(deduped.map((row) => row.fechaEntrega))];
-    const existentes = await this.entregaRepo
-      .createQueryBuilder('en')
-      .leftJoinAndSelect('en.beneficiario', 'b')
-      .where('en.beneficio_id = :beneficioId', { beneficioId })
-      .andWhere('en.proyecto_id = :proyectoId', { proyectoId })
-      .andWhere('en.beneficiario_id IN (:...ids)', { ids: beneficiarioIds })
-      .andWhere('en.fecha_entrega IN (:...fechas)', { fechas })
-      .getMany();
-    const existentesMap = new Map<string, EntregaBeneficio>();
-    for (const ex of existentes) {
-      const key = `${ex.beneficiario.beneficiarioId}|${ex.fechaEntrega}`;
-      existentesMap.set(key, ex);
+    let existentesMap = new Map<string, EntregaBeneficio>();
+    if (evento) {
+      // Unicidad por evento: un beneficiario solo puede tener una entrega en el evento, independiente del beneficio.
+      const existentes = await this.entregaRepo
+        .createQueryBuilder('en')
+        .leftJoinAndSelect('en.beneficiario', 'b')
+        .where('en.proyecto_id = :proyectoId', { proyectoId })
+        .andWhere('en.evento_id = :eventoId', { eventoId: evento.eventoId })
+        .andWhere('en.beneficiario_id IN (:...ids)', { ids: beneficiarioIds })
+        .getMany();
+      existentesMap = new Map<string, EntregaBeneficio>();
+      for (const ex of existentes) {
+        const key = `${ex.beneficiario.beneficiarioId}`;
+        if (!existentesMap.has(key)) existentesMap.set(key, ex);
+      }
+    } else {
+      const fechas = [...new Set(deduped.map((row) => row.fechaEntrega))];
+      const existentes = await this.entregaRepo
+        .createQueryBuilder('en')
+        .leftJoinAndSelect('en.beneficiario', 'b')
+        .where('en.beneficio_id = :beneficioId', { beneficioId })
+        .andWhere('en.proyecto_id = :proyectoId', { proyectoId })
+        .andWhere('en.beneficiario_id IN (:...ids)', { ids: beneficiarioIds })
+        .andWhere('en.fecha_entrega IN (:...fechas)', { fechas })
+        .getMany();
+      existentesMap = new Map<string, EntregaBeneficio>();
+      for (const ex of existentes) {
+        const key = `${ex.beneficiario.beneficiarioId}|${ex.fechaEntrega}`;
+        existentesMap.set(key, ex);
+      }
     }
 
     const upsert = payload.upsert !== false;
@@ -187,10 +372,9 @@ export class ProyectosEntregasBeneficiosService {
       throw new BadRequestException(`Ya existen entregas registradas: ${conflicts}`);
     }
 
-    const aInsertar = deduped.filter((row) => !existentesMap.has(`${row.beneficiarioId}|${row.fechaEntrega}`));
-    const aActualizar = upsert
-      ? deduped.filter((row) => existentesMap.has(`${row.beneficiarioId}|${row.fechaEntrega}`))
-      : [];
+    const keyFor = (row: EntregaSanitizada) => (evento ? `${row.beneficiarioId}` : `${row.beneficiarioId}|${row.fechaEntrega}`);
+    const aInsertar = deduped.filter((row) => !existentesMap.has(keyFor(row)));
+    const aActualizar = upsert ? deduped.filter((row) => existentesMap.has(keyFor(row))) : [];
 
     const benefPorId = new Map(beneficiarios.map((b) => [b.beneficiarioId, b] as const));
 
@@ -246,18 +430,20 @@ export class ProyectosEntregasBeneficiosService {
     }> = [];
     if (aActualizar.length > 0) {
       for (const row of aActualizar) {
-        const key = `${row.beneficiarioId}|${row.fechaEntrega}`;
-        const entity = existentesMap.get(key);
+        const entity = existentesMap.get(keyFor(row));
         if (!entity) {
           continue;
         }
+        // Actualiza beneficio si el post viene para otro beneficio (corrige equivocación)
+        entity.beneficio = beneficio;
         entity.cantidad = row.cantidad;
         entity.estadoId = row.estadoId;
         entity.observaciones = row.observaciones;
         if (evento) entity.evento = evento;
+        entity.fechaEntrega = row.fechaEntrega;
         if (entregadoPor) entity.entregadoPor = entregadoPor;
       }
-      const guardadas = await this.entregaRepo.save(aActualizar.map((row) => existentesMap.get(`${row.beneficiarioId}|${row.fechaEntrega}`)!));
+      const guardadas = await this.entregaRepo.save(aActualizar.map((row) => existentesMap.get(keyFor(row))!));
       actualizados = guardadas.length;
       resultadosUpdate = guardadas.map((ent) => ({
         entregaId: ent.entregaId,

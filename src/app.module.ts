@@ -47,6 +47,7 @@ import { BeneficioProyecto } from './entities/beneficio-proyecto.entity';
 import { ProyectosBeneficiosController } from './proyectos/beneficios-proyecto/beneficios-proyecto.controller';
 import { ProyectosBeneficiosService } from './proyectos/beneficios-proyecto/beneficios-proyecto.service';
 import { ProyectosEntregasBeneficiosController } from './proyectos/entregas-beneficios/entregas-beneficios.controller';
+import { ProyectosEntregasPorEventoController } from './proyectos/entregas-beneficios/entregas-por-evento.controller';
 import { ProyectosEntregasBeneficiosService } from './proyectos/entregas-beneficios/entregas-beneficios.service';
 import { ProyectosEventosEntregaController } from './proyectos/eventos-entrega/eventos-entrega.controller';
 import { ProyectosEventosEntregaService } from './proyectos/eventos-entrega/eventos-entrega.service';
@@ -129,6 +130,7 @@ import { ProyectosEventosEntregaService } from './proyectos/eventos-entrega/even
     BeneficiosController,
     ProyectosBeneficiosController,
     ProyectosEntregasBeneficiosController,
+    ProyectosEntregasPorEventoController,
     ProyectosEventosEntregaController,
   ],
   providers: [

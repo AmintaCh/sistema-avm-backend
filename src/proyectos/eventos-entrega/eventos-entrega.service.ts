@@ -85,7 +85,7 @@ export class ProyectosEventosEntregaService {
 
   async listarEventos(
     proyectoId: number,
-    filtros?: { q?: string; desde?: string; hasta?: string },
+    filtros?: { q?: string; desde?: string; hasta?: string; eventoId?: number },
   ) {
     if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
       throw new BadRequestException('proyectoId inválido');
@@ -111,6 +111,13 @@ export class ProyectosEventosEntregaService {
     const q = (filtros?.q ?? '').trim();
     if (q) {
       qb.andWhere('ev.nombre LIKE :q', { q: `%${q}%` });
+    }
+
+    if (filtros?.eventoId != null) {
+      if (!Number.isInteger(filtros.eventoId) || filtros.eventoId <= 0) {
+        throw new BadRequestException('eventoId inválido');
+      }
+      qb.andWhere('ev.evento_id = :eventoId', { eventoId: filtros.eventoId });
     }
 
     const dateOrIsoRe = /^\d{4}-\d{2}-\d{2}(T.*)?$/;

@@ -27,11 +27,20 @@ export class ProyectosEventosEntregaController {
     @Query('q') q?: string,
     @Query('desde') desde?: string,
     @Query('hasta') hasta?: string,
+    @Query('eventoId') eventoIdParam?: string,
   ) {
     const proyectoId = parseInt(idParam, 10);
     if (Number.isNaN(proyectoId)) {
       throw new BadRequestException('id inválido');
     }
-    return this.svc.listarEventos(proyectoId, { q, desde, hasta });
+    let eventoId: number | undefined = undefined;
+    if (eventoIdParam != null) {
+      const parsed = parseInt(eventoIdParam, 10);
+      if (Number.isNaN(parsed) || parsed <= 0) {
+        throw new BadRequestException('eventoId inválido');
+      }
+      eventoId = parsed;
+    }
+    return this.svc.listarEventos(proyectoId, { q, desde, hasta, eventoId });
   }
 }
