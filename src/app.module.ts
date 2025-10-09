@@ -60,6 +60,12 @@ import { BeneficiariosDetalleProyectoService } from './beneficiarios-detalle-pro
 import { BeneficiarioDetalleAggView } from './reporting/entities/vw-beneficiarios-detalle-agg.view';
 import { BeneficiariosDetalleAggController } from './beneficiarios-detalle-agg/beneficiarios-detalle-agg.controller';
 import { BeneficiariosDetalleAggService } from './beneficiarios-detalle-agg/beneficiarios-detalle-agg.service';
+import { BeneficiariosActivosPorProyectoView } from './reporting/entities/vw-beneficiarios-activos-por-proyecto.view';
+import { BeneficiariosActivosPorProyectoController } from './beneficiarios-activos-por-proyecto/beneficiarios-activos-por-proyecto.controller';
+import { BeneficiariosActivosPorProyectoService } from './beneficiarios-activos-por-proyecto/beneficiarios-activos-por-proyecto.service';
+import { DistribucionBeneficiariosGeneroView } from './reporting/entities/vw-distribucion-beneficiarios-genero.view';
+import { BeneficiariosDistribucionGeneroController } from './beneficiarios-distribucion-genero/beneficiarios-distribucion-genero.controller';
+import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribucion-genero/beneficiarios-distribucion-genero.service';
 
 @Module({
   imports: [
@@ -95,6 +101,8 @@ import { BeneficiariosDetalleAggService } from './beneficiarios-detalle-agg/bene
         BeneficiarioDetalleView,
         BeneficiarioDetalleProyectoView,
         BeneficiarioDetalleAggView,
+        DistribucionBeneficiariosGeneroView,
+        BeneficiariosActivosPorProyectoView,
       ],
       synchronize: false,
       // logging: true,
@@ -121,6 +129,8 @@ import { BeneficiariosDetalleAggService } from './beneficiarios-detalle-agg/bene
       BeneficiarioDetalleView,
       BeneficiarioDetalleProyectoView,
       BeneficiarioDetalleAggView,
+      DistribucionBeneficiariosGeneroView,
+      BeneficiariosActivosPorProyectoView,
     ]),
     JwtModule.registerAsync({
       global: true,
@@ -150,6 +160,8 @@ import { BeneficiariosDetalleAggService } from './beneficiarios-detalle-agg/bene
     BeneficiariosDetalleController,
     BeneficiariosDetalleProyectoController,
     BeneficiariosDetalleAggController,
+    BeneficiariosDistribucionGeneroController,
+    BeneficiariosActivosPorProyectoController,
   ],
   providers: [
     AppService,
@@ -169,6 +181,8 @@ import { BeneficiariosDetalleAggService } from './beneficiarios-detalle-agg/bene
     BeneficiariosDetalleService,
     BeneficiariosDetalleProyectoService,
     BeneficiariosDetalleAggService,
+    BeneficiariosDistribucionGeneroService,
+    BeneficiariosActivosPorProyectoService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
