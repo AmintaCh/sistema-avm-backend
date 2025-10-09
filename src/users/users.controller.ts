@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from '../auth/public.decorator';
 import { UserSettingsDto } from './dto/user-settings.dto';
+import { UpdateUserRolDto } from './dto/update-user-rol.dto';
 
 @Controller('users')
 export class UsersController {
@@ -41,5 +42,13 @@ export class UsersController {
   @Get(':usuarioId/settings')
   async obtenerSettings(@Param('usuarioId', ParseIntPipe) usuarioId: number) {
     return this.usersService.obtenerSettings(usuarioId);
+  }
+
+  @Put(':usuarioId/rol')
+  async actualizarRol(
+    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Body() body: UpdateUserRolDto,
+  ) {
+    return this.usersService.actualizarRol(usuarioId, body);
   }
 }

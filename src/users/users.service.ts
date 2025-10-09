@@ -13,6 +13,7 @@ import { UsuarioProyecto } from '../entities/usuario-proyecto.entity';
 import { BeneficiarioProyecto } from '../entities/beneficiario-proyecto.entity';
 import { UsuarioSettings } from '../entities/usuario-settings.entity';
 import { UserSettingsDto } from './dto/user-settings.dto';
+import { UpdateUserRolDto } from './dto/update-user-rol.dto';
 
 type RegistroUsuarioResultado = {
   usuarioId: number;
@@ -153,6 +154,36 @@ export class UsersService {
       theme: settings.theme,
       scheme: settings.scheme,
       layout: settings.layout,
+    };
+  }
+
+  async actualizarRol(usuarioId: number, dto: UpdateUserRolDto) {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new BadRequestException('usuarioId inválido');
+    }
+    if (!dto || typeof dto !== 'object' || !dto.rolId || !Number.isInteger(dto.rolId) || dto.rolId <= 0) {
+      throw new BadRequestException('rolId inválido');
+    }
+
+    const usuario = await this.usuarioRepo.findOne({ where: { usuarioId } });
+    if (!usuario) {
+      throw new NotFoundException('No se encontró el usuario indicado');
+    }
+
+    const rol = await this.rolRepo.findOne({ where: { rolId: dto.rolId } });
+    if (!rol) {
+      throw new BadRequestException('El rol no existe');
+    }
+
+    usuario.rol = rol;
+    await this.usuarioRepo.save(usuario);
+
+    return {
+      usuarioId: usuario.usuarioId,
+      rol: {
+        rolId: rol.rolId,
+        nombreRol: rol.nombreRol,
+      },
     };
   }
 
