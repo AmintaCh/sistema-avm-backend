@@ -76,9 +76,9 @@ import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribu
       type: 'mysql',
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT ?? '3306', 10),
-      username: process.env.DB_USER || 'app_user',
-      password: process.env.DB_PASSWORD || 'TuPasswordFuerte!',
-      database: process.env.DB_DATABASE || 'BD_VIVAMOS',
+      username: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
       entities: [
         Persona,
         Usuario,
