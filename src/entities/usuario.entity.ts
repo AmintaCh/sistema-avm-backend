@@ -11,7 +11,7 @@ export class Usuario {
   @JoinColumn({ name: 'persona_id', referencedColumnName: 'personaId' })
   persona!: Persona;
 
-  @Column({ name: 'nombre_usuario', type: 'varchar', length: 25, unique: true })
+  @Column({ name: 'nombre_usuario', type: 'varchar', length: 25 })
   nombreUsuario!: string;
 
   @Column({ name: 'correo_electronico', type: 'varchar', length: 100, unique: true })

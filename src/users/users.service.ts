@@ -14,6 +14,7 @@ import { BeneficiarioProyecto } from '../entities/beneficiario-proyecto.entity';
 import { UsuarioSettings } from '../entities/usuario-settings.entity';
 import { UserSettingsDto } from './dto/user-settings.dto';
 import { UpdateUserRolDto } from './dto/update-user-rol.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 
 type RegistroUsuarioResultado = {
   usuarioId: number;
@@ -259,12 +260,11 @@ export class UsersService {
     const posibleNombreUsuario = buildNombreUsuario(dto);
 
     // Validaciones de unicidad previas (documento, correo y usuario).
-    const [docExistente, emailExistente, userExistente] = await Promise.all([
+    const [docExistente, emailExistente] = await Promise.all([
       dto.numeroDocumento
         ? this.personaRepo.findOne({ where: { numeroDocumento: dto.numeroDocumento } })
         : Promise.resolve(null),
       this.usuarioRepo.findOne({ where: { correoElectronico: dto.correoElectronico } }),
-      this.usuarioRepo.findOne({ where: { nombreUsuario: posibleNombreUsuario } }),
     ]);
 
     if (docExistente) {
@@ -273,9 +273,7 @@ export class UsersService {
     if (emailExistente) {
       throw new BadRequestException('El correo_electronico ya existe');
     }
-    if (userExistente) {
-      throw new BadRequestException('El nombre_usuario ya existe');
-    }
+    // Ya no se valida unicidad de nombre_usuario en el registro
 
     const rol = await this.rolRepo.findOne({ where: { rolId: dto.rolId } });
     if (!rol) {
@@ -337,6 +335,148 @@ export class UsersService {
         fechaRegistro: usuarioGuardado.fechaRegistro,
         estadoId: usuarioGuardado.estadoId,
         rolId: rol.rolId,
+      };
+    });
+  }
+
+  async obtenerPerfil(usuarioId: number) {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new BadRequestException('usuarioId inválido');
+    }
+
+    const usuario = await this.usuarioRepo.findOne({ where: { usuarioId }, relations: ['persona'] });
+    if (!usuario) {
+      throw new NotFoundException('No se encontró el usuario indicado');
+    }
+
+    const p = usuario.persona;
+    return {
+      usuarioId: usuario.usuarioId,
+      personaId: p.personaId,
+      nombreUsuario: usuario.nombreUsuario,
+      correoElectronico: usuario.correoElectronico,
+      fechaRegistro: usuario.fechaRegistro,
+      estadoId: usuario.estadoId,
+      primerNombre: p.primerNombre,
+      segundoNombre: p.segundoNombre ?? null,
+      tercerNombre: p.tercerNombre ?? null,
+      primerApellido: p.primerApellido,
+      segundoApellido: p.segundoApellido ?? null,
+      fechaNacimiento: p.fechaNacimiento ?? null,
+      genero: p.genero ?? null,
+      tipoDocumento: p.tipoDocumento ?? null,
+      numeroDocumento: p.numeroDocumento ?? null,
+      direccionDetalle: p.direccionDetalle ?? null,
+      municipioId: p.municipioId ?? null,
+      locacionId: p.locacionId ?? null,
+      telefono: p.telefono ?? null,
+    };
+  }
+
+  async actualizarPerfil(usuarioId: number, dto: UpdateUserProfileDto) {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new BadRequestException('usuarioId inválido');
+    }
+    if (!dto || typeof dto !== 'object') {
+      throw new BadRequestException('Body inválido');
+    }
+    // No se permite actualizar correo electrónico
+    if ((dto as any).correoElectronico !== undefined) {
+      throw new BadRequestException('No se permite actualizar correo_electronico');
+    }
+
+    const usuario = await this.usuarioRepo.findOne({ where: { usuarioId }, relations: ['persona'] });
+    if (!usuario) {
+      throw new NotFoundException('No se encontró el usuario indicado');
+    }
+
+    // Validaciones de formato/presencia condicionales
+    if (dto.primerNombre !== undefined && !dto.primerNombre.toString().trim()) {
+      throw new BadRequestException('El campo primer_nombre no puede estar vacío');
+    }
+    if (dto.primerApellido !== undefined && !dto.primerApellido.toString().trim()) {
+      throw new BadRequestException('El campo primer_apellido no puede estar vacío');
+    }
+
+    // Validaciones de unicidad condicionales
+    // numero_documento
+    if (dto.numeroDocumento !== undefined && dto.numeroDocumento !== null && dto.numeroDocumento !== '') {
+      const docExistente = await this.personaRepo.findOne({ where: { numeroDocumento: dto.numeroDocumento } });
+      if (docExistente && docExistente.personaId !== usuario.persona.personaId) {
+        throw new BadRequestException('El numero_documento ya existe');
+      }
+    }
+    // nombre_usuario
+    if (dto.nombreUsuario !== undefined && dto.nombreUsuario !== null) {
+      const candidato = (dto.nombreUsuario || '').toString().trim();
+      if (!candidato) {
+        throw new BadRequestException('nombre_usuario no puede estar vacío');
+      }
+      const username = candidato.slice(0, 25);
+      const userExistente = await this.usuarioRepo.findOne({ where: { nombreUsuario: username } });
+      if (userExistente && userExistente.usuarioId !== usuario.usuarioId) {
+        throw new BadRequestException('El nombre_usuario ya existe');
+      }
+      dto.nombreUsuario = username; // normalizar para guardar
+    }
+
+    // IDs restringidos por este endpoint
+    if ((dto as any).estadoId !== undefined) {
+      throw new BadRequestException('No se permite actualizar estado_id por este endpoint');
+    }
+
+    // Validación básica de municipioId/locacionId si vienen
+    if (dto.municipioId !== undefined && dto.municipioId !== null) {
+      if (!Number.isInteger(dto.municipioId) || dto.municipioId <= 0) {
+        throw new BadRequestException('municipioId inválido');
+      }
+    }
+    if (dto.locacionId !== undefined && dto.locacionId !== null) {
+      if (!Number.isInteger(dto.locacionId) || dto.locacionId <= 0) {
+        throw new BadRequestException('locacionId inválido');
+      }
+    }
+
+    // Aplicar cambios en transacción
+    return this.dataSource.transaction(async (manager) => {
+      // Persona: solo actualizar campos definidos en el DTO
+      const p = usuario.persona;
+      if (dto.primerNombre !== undefined) p.primerNombre = dto.primerNombre;
+      if (dto.segundoNombre !== undefined) p.segundoNombre = dto.segundoNombre;
+      if (dto.tercerNombre !== undefined) p.tercerNombre = dto.tercerNombre;
+      if (dto.primerApellido !== undefined) p.primerApellido = dto.primerApellido;
+      if (dto.segundoApellido !== undefined) p.segundoApellido = dto.segundoApellido;
+      if (dto.fechaNacimiento !== undefined) p.fechaNacimiento = dto.fechaNacimiento;
+      if (dto.genero !== undefined) p.genero = dto.genero;
+      if (dto.tipoDocumento !== undefined) p.tipoDocumento = dto.tipoDocumento;
+      if (dto.numeroDocumento !== undefined) p.numeroDocumento = dto.numeroDocumento;
+      if (dto.direccionDetalle !== undefined) p.direccionDetalle = dto.direccionDetalle;
+      if (dto.municipioId !== undefined) p.municipioId = dto.municipioId as any;
+      if (dto.locacionId !== undefined) p.locacionId = dto.locacionId as any;
+      if (dto.telefono !== undefined) p.telefono = dto.telefono;
+      await manager.save(Persona, p);
+
+      // Usuario: nombreUsuario y contrasena (correo y estado no permitidos aquí)
+      if (dto.nombreUsuario !== undefined) {
+        usuario.nombreUsuario = dto.nombreUsuario;
+      }
+      if (dto.contrasena !== undefined) {
+        const nueva = (dto.contrasena ?? '').toString().trim();
+        if (nueva) {
+          usuario.hashContrasena = this.hashContrasena(nueva);
+        }
+        // si viene vacía o solo espacios, se mantiene la existente
+      }
+      // estadoId no se actualiza aquí
+      const saved = await manager.save(Usuario, usuario);
+
+      return {
+        usuarioId: saved.usuarioId,
+        personaId: p.personaId,
+        nombreUsuario: saved.nombreUsuario,
+        correoElectronico: saved.correoElectronico,
+        fechaRegistro: saved.fechaRegistro,
+        estadoId: saved.estadoId,
       };
     });
   }
