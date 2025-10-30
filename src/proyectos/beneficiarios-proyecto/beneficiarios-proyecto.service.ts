@@ -73,7 +73,7 @@ export class ProyectosBeneficiariosService {
       .addSelect('p.persona_id', 'personaId')
       .addSelect('p.primer_nombre', 'primerNombre')
       .addSelect('p.segundo_nombre', 'segundoNombre')
-      .addSelect('p.tercer_nombre', 'tercerNomber')
+      .addSelect('p.tercer_nombre', 'tercerNombre')
       .addSelect('p.primer_apellido', 'primerApellido')
       .addSelect('p.segundo_apellido', 'segundoApellido')
       .addSelect('bp.fecha_incorporacion', 'fechaIncorporacion')
@@ -90,7 +90,7 @@ export class ProyectosBeneficiariosService {
         ? { personaId: r.personaId,
           primerNombre: r.primerNombre,
           segundoNombre:r.segundoNombre,
-          tercerNomber:r.tercerNomber,
+          tercerNombre:r.tercerNombre,
           primerApellido: r.primerApellido,
           segundoApellido: r.segundoApellido
         }
