@@ -5,6 +5,7 @@ import { LoginDto } from './dto/login.dto';
 import { Public } from '../auth/public.decorator';
 import { UserSettingsDto } from './dto/user-settings.dto';
 import { UpdateUserRolDto } from './dto/update-user-rol.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 
 @Controller('users')
 export class UsersController {
@@ -50,5 +51,18 @@ export class UsersController {
     @Body() body: UpdateUserRolDto,
   ) {
     return this.usersService.actualizarRol(usuarioId, body);
+  }
+
+  @Put(':usuarioId/perfil')
+  async actualizarPerfil(
+    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Body() body: UpdateUserProfileDto,
+  ) {
+    return this.usersService.actualizarPerfil(usuarioId, body);
+  }
+
+  @Get(':usuarioId/perfil')
+  async obtenerPerfil(@Param('usuarioId', ParseIntPipe) usuarioId: number) {
+    return this.usersService.obtenerPerfil(usuarioId);
   }
 }
