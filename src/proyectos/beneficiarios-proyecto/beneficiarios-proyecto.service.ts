@@ -72,7 +72,10 @@ export class ProyectosBeneficiariosService {
       .addSelect('b.estado_id', 'beneficiarioEstadoId')
       .addSelect('p.persona_id', 'personaId')
       .addSelect('p.primer_nombre', 'primerNombre')
+      .addSelect('p.segundo_nombre', 'segundoNombre')
+      .addSelect('p.tercer_nombre', 'tercerNombre')
       .addSelect('p.primer_apellido', 'primerApellido')
+      .addSelect('p.segundo_apellido', 'segundoApellido')
       .addSelect('bp.fecha_incorporacion', 'fechaIncorporacion')
       .addSelect('bp.estado_id', 'estadoId')
       .where('bp.proyecto_id = :proyectoId', { proyectoId })
@@ -84,7 +87,13 @@ export class ProyectosBeneficiariosService {
       beneficiarioId: r.beneficiarioId,
       beneficiarioEstadoId: r.beneficiarioEstadoId,
       persona: r.personaId
-        ? { personaId: r.personaId, primerNombre: r.primerNombre, primerApellido: r.primerApellido }
+        ? { personaId: r.personaId,
+          primerNombre: r.primerNombre,
+          segundoNombre:r.segundoNombre,
+          tercerNombre:r.tercerNombre,
+          primerApellido: r.primerApellido,
+          segundoApellido: r.segundoApellido
+        }
         : null,
       fechaIncorporacion: r.fechaIncorporacion,
       estadoId: r.estadoId,
