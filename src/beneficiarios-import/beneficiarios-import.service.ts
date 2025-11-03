@@ -62,6 +62,9 @@ export class BeneficiariosImportService {
   private normalizeHeader(h: string): string {
     return h
       .toString()
+      // Eliminar acentos/diacríticos para tolerar encabezados con tildes
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .trim()
       .toLowerCase()
       .replace(/\s+/g, '')
@@ -212,14 +215,64 @@ export class BeneficiariosImportService {
       else results.push({ index: idx + 2, ok: true });
     });
 
+    // Validaciones referenciales previas (para evitar efectos parciales cuando strict=true)
+    // Municipios
+    const municipioIds = Array.from(
+      new Set(
+        parsed
+          .map((row) => row.municipioId)
+          .filter((v): v is number => v !== null && v !== undefined)
+      )
+    );
+    let existingMunicipios = new Set<number>();
+    if (municipioIds.length) {
+      const found = await this.municipioRepo.find({ where: municipioIds.map((id) => ({ municipioId: id })) as any });
+      existingMunicipios = new Set(found.map((m) => m.municipioId));
+    }
+
+    // Proyectos (de fila o de query param)
+    const proyectoIds = Array.from(
+      new Set(
+        parsed
+          .map((row) => row.proyectoId ?? opts.proyectoId ?? null)
+          .filter((v): v is number => v !== null && v !== undefined)
+      )
+    );
+    let existingProyectos = new Set<number>();
+    if (proyectoIds.length) {
+      const found = await this.proyectoRepo.find({ where: proyectoIds.map((id) => ({ proyectoId: id })) as any });
+      existingProyectos = new Set(found.map((p) => p.proyectoId));
+    }
+
+    // Aplicar errores referenciales a nivel de resultados
+    parsed.forEach((row, i) => {
+      const res = results[i];
+      const errs: string[] = [];
+      if (row.municipioId && !existingMunicipios.has(row.municipioId)) errs.push('municipioId no existe');
+      const linkProyectoId = row.proyectoId ?? opts.proyectoId ?? null;
+      if (linkProyectoId && !existingProyectos.has(linkProyectoId)) errs.push(`proyectoId ${linkProyectoId} no existe`);
+      if (errs.length) {
+        res.ok = false;
+        res.errors = (res.errors ?? []).concat(errs);
+      }
+    });
+
     const hasErrors = results.some((r) => !r.ok);
     // En modo dryRun devolvemos el detalle sin lanzar error
     if (opts.dryRun) {
+      // En dryRun no escribimos en DB. Reportamos cuántas filas serían procesadas
+      // (válidas) aunque existan otras con errores.
+      const wouldProcess = results.filter((r) => r.ok).length;
+      const errorRows = results.filter((r) => !r.ok).map((r) => r.index);
+      const message = errorRows.length
+        ? `Se encontraron filas inválidas en: ${errorRows.join(', ')}`
+        : 'Validación exitosa. Todas las filas son válidas.';
       return {
         total: parsed.length,
-        processed: hasErrors ? 0 : parsed.length,
+        processed: wouldProcess,
         dryRun: true,
         errors: results.filter((r) => !r.ok),
+        message,
       };
     }
 
@@ -227,8 +280,9 @@ export class BeneficiariosImportService {
     const isStrict = opts.strict !== false; // default true
     if (hasErrors && isStrict) {
       const errorDetail = results.filter((r) => !r.ok);
+      const rows = errorDetail.map((e) => e.index).join(', ');
       throw new BadRequestException({
-        message: 'El archivo contiene filas inválidas. Corrija antes de cargar.',
+        message: `El archivo contiene filas inválidas en: ${rows}. Corrija antes de cargar.`,
         total: parsed.length,
         totalErrors: errorDetail.length,
         errors: errorDetail,
@@ -243,15 +297,7 @@ export class BeneficiariosImportService {
         const res = results[i];
         if (!res.ok) continue; // saltar inválidas en ejecución real
 
-        // Validaciones referenciales
-        if (row.municipioId) {
-          const muni = await trx.getRepository(Municipio).findOne({ where: { municipioId: row.municipioId } });
-          if (!muni) {
-            res.ok = false;
-            res.errors = ['municipioId no existe'];
-            continue;
-          }
-        }
+        // Validaciones referenciales ya fueron aplicadas en la fase previa
 
         let persona = await trx.getRepository(Persona).findOne({ where: { numeroDocumento: row.numeroDocumento } });
 
@@ -330,26 +376,21 @@ export class BeneficiariosImportService {
         // Vinculación a proyecto si corresponde
         const linkProyectoId = row.proyectoId ?? opts.proyectoId ?? null;
         if (linkProyectoId) {
-          const proyecto = await trx.getRepository(Proyecto).findOne({ where: { proyectoId: linkProyectoId } });
-          if (!proyecto) {
-            // si no existe, reportamos pero no rompemos el resto del lote
-            res.ok = false;
-            res.errors = [`proyectoId ${linkProyectoId} no existe`];
-          } else {
-            const existing = await trx.getRepository(BeneficiarioProyecto).findOne({ where: { beneficiarioId: beneficiario.beneficiarioId, proyectoId: linkProyectoId } });
-            if (!existing) {
-              const bp = trx.getRepository(BeneficiarioProyecto).create({
-                beneficiarioId: beneficiario.beneficiarioId,
-                proyectoId: linkProyectoId,
-                fechaIncorporacion: row.fechaIncorporacion ?? row.fechaInicio,
-                estadoId: row.estadoEnProyecto ?? 1,
-              });
-              await trx.getRepository(BeneficiarioProyecto).save(bp);
-            } else if (opts.mode !== 'skip-duplicates') {
-              existing.fechaIncorporacion = row.fechaIncorporacion ?? existing.fechaIncorporacion;
-              if (row.estadoEnProyecto !== null && row.estadoEnProyecto !== undefined) existing.estadoId = row.estadoEnProyecto;
-              await trx.getRepository(BeneficiarioProyecto).save(existing);
-            }
+          const existing = await trx
+            .getRepository(BeneficiarioProyecto)
+            .findOne({ where: { beneficiarioId: beneficiario.beneficiarioId, proyectoId: linkProyectoId } });
+          if (!existing) {
+            const bp = trx.getRepository(BeneficiarioProyecto).create({
+              beneficiarioId: beneficiario.beneficiarioId,
+              proyectoId: linkProyectoId,
+              fechaIncorporacion: row.fechaIncorporacion ?? row.fechaInicio,
+              estadoId: row.estadoEnProyecto ?? 1,
+            });
+            await trx.getRepository(BeneficiarioProyecto).save(bp);
+          } else if (opts.mode !== 'skip-duplicates') {
+            existing.fechaIncorporacion = row.fechaIncorporacion ?? existing.fechaIncorporacion;
+            if (row.estadoEnProyecto !== null && row.estadoEnProyecto !== undefined) existing.estadoId = row.estadoEnProyecto;
+            await trx.getRepository(BeneficiarioProyecto).save(existing);
           }
         }
 
