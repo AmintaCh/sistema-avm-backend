@@ -68,6 +68,9 @@ import { BeneficiariosDistribucionGeneroController } from './beneficiarios-distr
 import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribucion-genero/beneficiarios-distribucion-genero.service';
 import { BeneficiariosImportController } from './beneficiarios-import/beneficiarios-import.controller';
 import { BeneficiariosImportService } from './beneficiarios-import/beneficiarios-import.service';
+import { ProyectoResumenView } from './reporting/entities/vw-proyecto-resumen.view';
+import { ProyectosResumenController } from './proyectos/resumen/proyectos-resumen.controller';
+import { ProyectosResumenService } from './proyectos/resumen/proyectos-resumen.service';
 
 @Module({
   imports: [
@@ -105,6 +108,7 @@ import { BeneficiariosImportService } from './beneficiarios-import/beneficiarios
         BeneficiarioDetalleAggView,
         DistribucionBeneficiariosGeneroView,
         BeneficiariosActivosPorProyectoView,
+        ProyectoResumenView,
       ],
       synchronize: false,
       // logging: true,
@@ -133,6 +137,7 @@ import { BeneficiariosImportService } from './beneficiarios-import/beneficiarios
       BeneficiarioDetalleAggView,
       DistribucionBeneficiariosGeneroView,
       BeneficiariosActivosPorProyectoView,
+      ProyectoResumenView,
     ]),
     JwtModule.registerAsync({
       global: true,
@@ -159,6 +164,7 @@ import { BeneficiariosImportService } from './beneficiarios-import/beneficiarios
     ProyectosEntregasBeneficiosController,
     ProyectosEntregasPorEventoController,
     ProyectosEventosEntregaController,
+    ProyectosResumenController,
     BeneficiariosDetalleController,
     BeneficiariosDetalleProyectoController,
     BeneficiariosDetalleAggController,
@@ -187,6 +193,7 @@ import { BeneficiariosImportService } from './beneficiarios-import/beneficiarios
     BeneficiariosDistribucionGeneroService,
     BeneficiariosActivosPorProyectoService,
     BeneficiariosImportService,
+    ProyectosResumenService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
