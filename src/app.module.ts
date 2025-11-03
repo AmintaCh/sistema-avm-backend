@@ -66,6 +66,8 @@ import { BeneficiariosActivosPorProyectoService } from './beneficiarios-activos-
 import { DistribucionBeneficiariosGeneroView } from './reporting/entities/vw-distribucion-beneficiarios-genero.view';
 import { BeneficiariosDistribucionGeneroController } from './beneficiarios-distribucion-genero/beneficiarios-distribucion-genero.controller';
 import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribucion-genero/beneficiarios-distribucion-genero.service';
+import { BeneficiariosImportController } from './beneficiarios-import/beneficiarios-import.controller';
+import { BeneficiariosImportService } from './beneficiarios-import/beneficiarios-import.service';
 
 @Module({
   imports: [
@@ -162,6 +164,7 @@ import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribu
     BeneficiariosDetalleAggController,
     BeneficiariosDistribucionGeneroController,
     BeneficiariosActivosPorProyectoController,
+    BeneficiariosImportController,
   ],
   providers: [
     AppService,
@@ -183,6 +186,7 @@ import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribu
     BeneficiariosDetalleAggService,
     BeneficiariosDistribucionGeneroService,
     BeneficiariosActivosPorProyectoService,
+    BeneficiariosImportService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })

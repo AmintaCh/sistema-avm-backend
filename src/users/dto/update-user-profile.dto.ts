@@ -15,6 +15,5 @@ export class UpdateUserProfileDto {
   telefono?: string | null;
 
   // Usuario (opcionales)
-  nombreUsuario?: string;
   contrasena?: string; // plain, si se envía se re-hashea
 }
