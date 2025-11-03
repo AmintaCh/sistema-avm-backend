@@ -406,19 +406,7 @@ export class UsersService {
         throw new BadRequestException('El numero_documento ya existe');
       }
     }
-    // nombre_usuario
-    if (dto.nombreUsuario !== undefined && dto.nombreUsuario !== null) {
-      const candidato = (dto.nombreUsuario || '').toString().trim();
-      if (!candidato) {
-        throw new BadRequestException('nombre_usuario no puede estar vacío');
-      }
-      const username = candidato.slice(0, 25);
-      const userExistente = await this.usuarioRepo.findOne({ where: { nombreUsuario: username } });
-      if (userExistente && userExistente.usuarioId !== usuario.usuarioId) {
-        throw new BadRequestException('El nombre_usuario ya existe');
-      }
-      dto.nombreUsuario = username; // normalizar para guardar
-    }
+    // nombre_usuario: ahora se deriva de los campos de Persona, no del body
 
     // IDs restringidos por este endpoint
     if ((dto as any).estadoId !== undefined) {
@@ -456,10 +444,18 @@ export class UsersService {
       if (dto.telefono !== undefined) p.telefono = dto.telefono;
       await manager.save(Persona, p);
 
-      // Usuario: nombreUsuario y contrasena (correo y estado no permitidos aquí)
-      if (dto.nombreUsuario !== undefined) {
-        usuario.nombreUsuario = dto.nombreUsuario;
-      }
+      // Usuario: nombreUsuario derivado y contrasena (correo y estado no permitidos aquí)
+      // Derivar nombre de usuario desde Persona (máx 25 caracteres)
+      const parts = [
+        p.primerNombre,
+        p.segundoNombre ?? '',
+        p.tercerNombre ?? '',
+        p.primerApellido,
+        p.segundoApellido ?? '',
+      ]
+        .map((v) => (v ?? '').toString().trim())
+        .filter((v) => v.length > 0);
+      usuario.nombreUsuario = parts.join(' ').slice(0, 25);
       if (dto.contrasena !== undefined) {
         const nueva = (dto.contrasena ?? '').toString().trim();
         if (nueva) {

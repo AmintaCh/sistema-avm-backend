@@ -66,6 +66,11 @@ import { BeneficiariosActivosPorProyectoService } from './beneficiarios-activos-
 import { DistribucionBeneficiariosGeneroView } from './reporting/entities/vw-distribucion-beneficiarios-genero.view';
 import { BeneficiariosDistribucionGeneroController } from './beneficiarios-distribucion-genero/beneficiarios-distribucion-genero.controller';
 import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribucion-genero/beneficiarios-distribucion-genero.service';
+import { BeneficiariosImportController } from './beneficiarios-import/beneficiarios-import.controller';
+import { BeneficiariosImportService } from './beneficiarios-import/beneficiarios-import.service';
+import { ProyectoResumenView } from './reporting/entities/vw-proyecto-resumen.view';
+import { ProyectosResumenController } from './proyectos/resumen/proyectos-resumen.controller';
+import { ProyectosResumenService } from './proyectos/resumen/proyectos-resumen.service';
 
 @Module({
   imports: [
@@ -103,6 +108,7 @@ import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribu
         BeneficiarioDetalleAggView,
         DistribucionBeneficiariosGeneroView,
         BeneficiariosActivosPorProyectoView,
+        ProyectoResumenView,
       ],
       synchronize: false,
       // logging: true,
@@ -131,6 +137,7 @@ import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribu
       BeneficiarioDetalleAggView,
       DistribucionBeneficiariosGeneroView,
       BeneficiariosActivosPorProyectoView,
+      ProyectoResumenView,
     ]),
     JwtModule.registerAsync({
       global: true,
@@ -157,11 +164,13 @@ import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribu
     ProyectosEntregasBeneficiosController,
     ProyectosEntregasPorEventoController,
     ProyectosEventosEntregaController,
+    ProyectosResumenController,
     BeneficiariosDetalleController,
     BeneficiariosDetalleProyectoController,
     BeneficiariosDetalleAggController,
     BeneficiariosDistribucionGeneroController,
     BeneficiariosActivosPorProyectoController,
+    BeneficiariosImportController,
   ],
   providers: [
     AppService,
@@ -183,6 +192,8 @@ import { BeneficiariosDistribucionGeneroService } from './beneficiarios-distribu
     BeneficiariosDetalleAggService,
     BeneficiariosDistribucionGeneroService,
     BeneficiariosActivosPorProyectoService,
+    BeneficiariosImportService,
+    ProyectosResumenService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
