@@ -1,98 +1,158 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Sistema AVM – Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend del sistema AVM desarrollado con [NestJS](https://nestjs.com), TypeScript y MySQL.  
+Expone APIs para la gestión de usuarios, beneficiarios, proyectos, beneficios y reportes.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Tecnologías principales
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Node.js (NestJS 11) + TypeScript
+- MySQL + TypeORM
+- Autenticación con JWT (`@nestjs/jwt`)
+- Manejo de archivos Excel con `exceljs`
 
-## Project setup
+---
 
-```bash
-$ npm install
-```
+## Requisitos previos
 
-## Compile and run the project
+- Node.js 20+ y `npm`
+- Servidor MySQL accesible (local o remoto)
+- Opcional: Docker y Docker Compose
+
+---
+
+## Instalación
+
+Clonar el repositorio y descargar dependencias:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+git clone <URL_DEL_REPO>
+cd sistema-avm-backend
+npm install
 ```
 
-## Run tests
+> En entornos CI/CD se recomienda `npm ci`.
+
+---
+
+## Configuración (.env)
+
+La aplicación usa variables de entorno para conectarse a la base de datos y firmar los JWT.  
+Crear un archivo `.env` en la raíz del proyecto con, al menos:
+
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=usuario
+DB_PASSWORD=clave
+DB_DATABASE=sistema_avm
+
+JWT_SECRET=cambia-este-valor
+
+# Puerto HTTP del backend (opcional, por defecto 3000)
+PORT=3000
+```
+
+Notas:
+- El esquema de la base de datos debe existir previamente (TypeORM está configurado con `synchronize: false`).
+- Asegúrate de usar un `JWT_SECRET` seguro en producción.
+
+---
+
+## Compilar y ejecutar el proyecto
+
+### Desarrollo
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# Levantar la app en modo desarrollo (watch)
+npm run start:dev
 ```
 
-## Deployment
+La API quedará disponible en `http://localhost:3000` (o el puerto definido en `PORT`).
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Compilar (build) y producción
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Compilar TypeScript a JavaScript (carpeta dist/)
+npm run build
+
+# Ejecutar la versión compilada
+npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+> `start:prod` asume que la carpeta `dist` ya fue generada con `npm run build`.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## Uso con Docker
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Este repositorio incluye un `Dockerfile` listo para producción.
 
-## Support
+### Construir la imagen
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+docker build -t sistema-avm-backend .
+```
 
-## Stay in touch
+### Ejecutar el contenedor
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Usando el archivo `.env` de la raíz:
 
-## License
+```bash
+docker run --env-file .env -p 3000:3000 sistema-avm-backend
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Si quieres usar otro puerto externo:
+
+```bash
+docker run --env-file .env -p 8080:3000 sistema-avm-backend
+```
+
+---
+
+## Scripts disponibles
+
+Desde `package.json`:
+
+- `npm run start` – Ejecuta la app en modo desarrollo simple.
+- `npm run start:dev` – Desarrollo con recarga automática (watch).
+- `npm run build` – Compila el proyecto a `dist/`.
+- `npm run start:prod` – Ejecuta `node dist/main`.
+- `npm run lint` – Linter con ESLint.
+- `npm run format` – Formatea código con Prettier.
+
+---
+
+## Pruebas
+
+```bash
+# Pruebas unitarias
+npm run test
+
+# Pruebas e2e
+npm run test:e2e
+
+# Cobertura de código
+npm run test:cov
+```
+
+---
+
+## Estructura básica del proyecto
+
+Algunas carpetas importantes en `src/`:
+
+- `auth/` – Autenticación y guardas JWT.
+- `users/` – Gestión de usuarios.
+- `beneficiarios/` – Gestión de beneficiarios.
+- `proyectos/` – Gestión de proyectos, actividades y asistencias.
+- `beneficios/` – Gestión de beneficios y entregas.
+- `reporting/` – Vistas y entidades para reportes.
+- `entities/` – Entidades TypeORM compartidas.
+
+---
+
+## Licencia
+
+Este proyecto es **UNLICENSED** (ver `package.json`). Ajusta la licencia según las necesidades de tu organización.
