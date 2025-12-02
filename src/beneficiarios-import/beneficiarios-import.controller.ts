@@ -12,6 +12,7 @@ export class BeneficiariosImportController {
   async importar(
     @UploadedFile() file?: any,
     @Query('proyectoId') proyectoId?: string,
+    @Query('municipioId') municipioId?: string,
     @Query('mode') mode?: 'insert' | 'upsert' | 'skip-duplicates',
     @Query('dryRun') dryRun?: string,
     @Query('strict') strict?: string,
@@ -22,6 +23,7 @@ export class BeneficiariosImportController {
     }
 
     const pid = proyectoId !== undefined && proyectoId !== '' && !Number.isNaN(Number(proyectoId)) ? Number(proyectoId) : undefined;
+    const munid = municipioId !== undefined && municipioId !== '' && !Number.isNaN(Number(municipioId)) ? Number(municipioId) : undefined;
     const isDryRun = dryRun === '1' || dryRun === 'true';
     const importMode: 'insert' | 'upsert' | 'skip-duplicates' = mode ?? 'upsert';
     const isStrict = allowPartial === '1' || allowPartial === 'true' ? false : !(strict === '0' || strict === 'false');
@@ -30,6 +32,7 @@ export class BeneficiariosImportController {
       filename: file.originalname,
       buffer: file.buffer,
       proyectoId: pid,
+      municipioId: munid,
       mode: importMode,
       dryRun: isDryRun,
       strict: isStrict,
