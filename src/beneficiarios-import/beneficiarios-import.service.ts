@@ -12,6 +12,7 @@ type ImportOptions = {
   filename: string;
   buffer: Buffer;
   proyectoId?: number;
+  municipioId?: number;
   mode: 'insert' | 'upsert' | 'skip-duplicates';
   dryRun?: boolean;
   // strict=true: si hay filas inválidas, rechaza toda la carga con 400
@@ -37,15 +38,15 @@ type ParsedRow = {
   municipioId?: number | null;
 
   // Beneficiario
-  estadoBeneficiario: number; // estado_id
-  fechaInicio: string; // YYYY-MM-DD
+  fechaInicio?: string | null; // YYYY-MM-DD
   latitud: string;
   longitud: string;
 
   // Vinculación opcional
   proyectoId?: number | null; // si no viene, se usa el query param
   fechaIncorporacion?: string | null; // YYYY-MM-DD
-  estadoEnProyecto?: number | null;
+  estadoBeneficiario?: number | null; // default 1
+  estadoEnProyecto?: number | null; // default 1
 };
 
 @Injectable()
@@ -83,6 +84,29 @@ export class BeneficiariosImportService {
     return out;
   }
 
+  private formatDateValue(value: unknown): string | null {
+    if (value === null || value === undefined || value === '') return null;
+    // ExcelJS entrega Date para celdas de fecha; los números son seriales de Excel.
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value.toISOString().slice(0, 10);
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      // Serial de Excel (días desde 1899-12-30)
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+      const millis = value * 24 * 60 * 60 * 1000;
+      const d = new Date(excelEpoch.getTime() + millis);
+      return d.toISOString().slice(0, 10);
+    }
+    const s = String(value).trim();
+    if (!s) return null;
+    // Si ya viene en formato YYYY-MM-DD, devolverlo tal cual
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // Intento de parse genérico
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return null;
+  }
+
   private toParsedRow(row: RawRow): ParsedRow {
     const r = this.pick(row, [
       'tipoDocumento',
@@ -97,22 +121,20 @@ export class BeneficiariosImportService {
       'telefono',
       'direccionDetalle',
       'municipioId',
-      'estadoBeneficiario',
-      'fechaInicio',
       'latitud',
       'longitud',
       'proyectoId',
-      'fechaIncorporacion',
-      'estadoEnProyecto',
     ]);
 
     const numeroDocumento = String(r.numeroDocumento ?? '').trim();
     const primerNombre = String(r.primerNombre ?? '').trim();
     const primerApellido = String(r.primerApellido ?? '').trim();
-    const fechaInicio = String(r.fechaInicio ?? '').trim();
     const latitud = String(r.latitud ?? '').trim();
     const longitud = String(r.longitud ?? '').trim();
-    const estadoBeneficiario = r.estadoBeneficiario !== undefined && r.estadoBeneficiario !== null ? Number(r.estadoBeneficiario) : NaN;
+    const estadoBeneficiario =
+      r.estadoBeneficiario !== undefined && r.estadoBeneficiario !== null && String(r.estadoBeneficiario).trim() !== ''
+        ? Number(r.estadoBeneficiario)
+        : 1; // default activo
 
     return {
       tipoDocumento: r.tipoDocumento ? String(r.tipoDocumento).trim() : null,
@@ -123,17 +145,20 @@ export class BeneficiariosImportService {
       primerApellido,
       segundoApellido: r.segundoApellido ? String(r.segundoApellido).trim() : null,
       genero: r.genero ? String(r.genero).trim() : null,
-      fechaNacimiento: r.fechaNacimiento ? String(r.fechaNacimiento).trim() : null,
+      fechaNacimiento: this.formatDateValue(r.fechaNacimiento),
       telefono: r.telefono ? String(r.telefono).trim() : null,
       direccionDetalle: r.direccionDetalle ? String(r.direccionDetalle).trim() : null,
       municipioId: r.municipioId !== undefined && r.municipioId !== null && !Number.isNaN(Number(r.municipioId)) ? Number(r.municipioId) : null,
       estadoBeneficiario,
-      fechaInicio,
+      fechaInicio: r.fechaInicio ? String(r.fechaInicio).trim() : null,
       latitud,
       longitud,
       proyectoId: r.proyectoId !== undefined && r.proyectoId !== null && !Number.isNaN(Number(r.proyectoId)) ? Number(r.proyectoId) : null,
       fechaIncorporacion: r.fechaIncorporacion ? String(r.fechaIncorporacion).trim() : null,
-      estadoEnProyecto: r.estadoEnProyecto !== undefined && r.estadoEnProyecto !== null && !Number.isNaN(Number(r.estadoEnProyecto)) ? Number(r.estadoEnProyecto) : null,
+      estadoEnProyecto:
+        r.estadoEnProyecto !== undefined && r.estadoEnProyecto !== null && !Number.isNaN(Number(r.estadoEnProyecto))
+          ? Number(r.estadoEnProyecto)
+          : 1, // default activo en proyecto
     } as ParsedRow;
   }
 
@@ -195,10 +220,8 @@ export class BeneficiariosImportService {
     if (!row.numeroDocumento) errors.push('numeroDocumento es requerido');
     if (!row.primerNombre) errors.push('primerNombre es requerido');
     if (!row.primerApellido) errors.push('primerApellido es requerido');
-    if (!row.fechaInicio) errors.push('fechaInicio es requerido');
     if (!row.latitud) errors.push('latitud es requerido');
     if (!row.longitud) errors.push('longitud es requerido');
-    if (Number.isNaN(row.estadoBeneficiario)) errors.push('estadoBeneficiario inválido');
     if (row.municipioId !== null && row.municipioId !== undefined && row.municipioId <= 0) errors.push('municipioId inválido');
     return errors;
   }
@@ -206,6 +229,31 @@ export class BeneficiariosImportService {
   async importarArchivo(opts: ImportOptions) {
     const raws = await this.parseExcelOrCsv(opts.filename, opts.buffer);
     const parsed: ParsedRow[] = raws.map((r) => this.toParsedRow(r));
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Defaults: si no traen fechaInicio/fechaIncorporacion, usar la fecha actual
+    parsed.forEach((row) => {
+      if (!row.fechaInicio) row.fechaInicio = today;
+      if (!row.fechaIncorporacion) row.fechaIncorporacion = row.fechaInicio;
+      if ((row.municipioId === null || row.municipioId === undefined) && opts.municipioId !== undefined) {
+        row.municipioId = opts.municipioId;
+      }
+    });
+
+    // Proyectos (de fila o de query param) para validar existencia
+    const proyectoIds = Array.from(
+      new Set(
+        parsed
+          .map((row) => row.proyectoId ?? opts.proyectoId ?? null)
+          .filter((v): v is number => v !== null && v !== undefined)
+      )
+    );
+    let existingProyectos = new Set<number>();
+    if (proyectoIds.length) {
+      const found = await this.proyectoRepo.find({ where: proyectoIds.map((id) => ({ proyectoId: id })) as any });
+      existingProyectos = new Set(found.map((p) => p.proyectoId));
+    }
+
     const results: { index: number; ok: boolean; errors?: string[]; beneficiarioId?: number; personaId?: number }[] = [];
 
     // Validación previa
@@ -228,20 +276,6 @@ export class BeneficiariosImportService {
     if (municipioIds.length) {
       const found = await this.municipioRepo.find({ where: municipioIds.map((id) => ({ municipioId: id })) as any });
       existingMunicipios = new Set(found.map((m) => m.municipioId));
-    }
-
-    // Proyectos (de fila o de query param)
-    const proyectoIds = Array.from(
-      new Set(
-        parsed
-          .map((row) => row.proyectoId ?? opts.proyectoId ?? null)
-          .filter((v): v is number => v !== null && v !== undefined)
-      )
-    );
-    let existingProyectos = new Set<number>();
-    if (proyectoIds.length) {
-      const found = await this.proyectoRepo.find({ where: proyectoIds.map((id) => ({ proyectoId: id })) as any });
-      existingProyectos = new Set(found.map((p) => p.proyectoId));
     }
 
     // Aplicar errores referenciales a nivel de resultados
@@ -295,15 +329,19 @@ export class BeneficiariosImportService {
       for (let i = 0; i < parsed.length; i++) {
         const row = parsed[i];
         const res = results[i];
-        if (!res.ok) continue; // saltar inválidas en ejecución real
+      if (!res.ok) continue; // saltar inválidas en ejecución real
 
-        // Validaciones referenciales ya fueron aplicadas en la fase previa
+      // Validaciones referenciales ya fueron aplicadas en la fase previa
 
-        let persona = await trx.getRepository(Persona).findOne({ where: { numeroDocumento: row.numeroDocumento } });
+      const estadoBeneficiario = row.estadoBeneficiario ?? 1;
+      const fechaInicio = row.fechaInicio ?? today;
+      const fechaIncorporacion = row.fechaIncorporacion ?? fechaInicio;
 
-        if (!persona) {
-          if (opts.mode === 'skip-duplicates') {
-            // en este modo solo insertamos si no existe; aquí no existe, entonces insertaremos
+      let persona = await trx.getRepository(Persona).findOne({ where: { numeroDocumento: row.numeroDocumento } });
+
+      if (!persona) {
+        if (opts.mode === 'skip-duplicates') {
+          // en este modo solo insertamos si no existe; aquí no existe, entonces insertaremos
           }
           // Insertar persona
           persona = trx.getRepository(Persona).create({
@@ -354,17 +392,17 @@ export class BeneficiariosImportService {
 
         if (!beneficiario) {
           beneficiario = trx.getRepository(Beneficiario).create({
-            persona: { personaId: persona.personaId } as any,
-            estadoId: row.estadoBeneficiario,
-            fechaInicio: row.fechaInicio,
+            persona,
+            estadoId: estadoBeneficiario,
+            fechaInicio,
             latitud: row.latitud,
             longitud: row.longitud,
           });
           beneficiario = await trx.getRepository(Beneficiario).save(beneficiario);
         } else if (opts.mode !== 'skip-duplicates') {
           // actualizar datos del beneficiario si upsert
-          beneficiario.estadoId = row.estadoBeneficiario;
-          beneficiario.fechaInicio = row.fechaInicio;
+          beneficiario.estadoId = estadoBeneficiario;
+          beneficiario.fechaInicio = fechaInicio;
           beneficiario.latitud = row.latitud;
           beneficiario.longitud = row.longitud;
           await trx.getRepository(Beneficiario).save(beneficiario);
@@ -383,12 +421,12 @@ export class BeneficiariosImportService {
             const bp = trx.getRepository(BeneficiarioProyecto).create({
               beneficiarioId: beneficiario.beneficiarioId,
               proyectoId: linkProyectoId,
-              fechaIncorporacion: row.fechaIncorporacion ?? row.fechaInicio,
+              fechaIncorporacion,
               estadoId: row.estadoEnProyecto ?? 1,
             });
             await trx.getRepository(BeneficiarioProyecto).save(bp);
           } else if (opts.mode !== 'skip-duplicates') {
-            existing.fechaIncorporacion = row.fechaIncorporacion ?? existing.fechaIncorporacion;
+            existing.fechaIncorporacion = fechaIncorporacion ?? existing.fechaIncorporacion;
             if (row.estadoEnProyecto !== null && row.estadoEnProyecto !== undefined) existing.estadoId = row.estadoEnProyecto;
             await trx.getRepository(BeneficiarioProyecto).save(existing);
           }
@@ -425,13 +463,9 @@ export class BeneficiariosImportService {
       { header: 'telefono', key: 'telefono', width: 16 },
       { header: 'direccionDetalle', key: 'direccionDetalle', width: 28 },
       { header: 'municipioId', key: 'municipioId', width: 12 },
-      { header: 'estadoBeneficiario', key: 'estadoBeneficiario', width: 18 },
-      { header: 'fechaInicio', key: 'fechaInicio', width: 16, style: { numFmt: 'yyyy-mm-dd' } },
       { header: 'latitud', key: 'latitud', width: 14 },
       { header: 'longitud', key: 'longitud', width: 14 },
       { header: 'proyectoId', key: 'proyectoId', width: 12 },
-      { header: 'fechaIncorporacion', key: 'fechaIncorporacion', width: 16, style: { numFmt: 'yyyy-mm-dd' } },
-      { header: 'estadoEnProyecto', key: 'estadoEnProyecto', width: 18 },
     ];
 
     // Encabezado en negrita y autofiltro
@@ -471,20 +505,18 @@ export class BeneficiariosImportService {
       telefono: '555-1234',
       direccionDetalle: 'Calle 1 #2-3',
       municipioId: '',
-      estadoBeneficiario: 1,
-      fechaInicio: new Date(),
       latitud: '14.624',
       longitud: '-90.519',
       proyectoId: '',
-      fechaIncorporacion: '',
-      estadoEnProyecto: 1,
     });
 
     // Nota/instrucciones en una hoja aparte
     const info = wb.addWorksheet('Instrucciones');
     info.getCell('A1').value =
-      'Instrucciones: Rellene la hoja Template-Beneficiarios. Campos requeridos: numeroDocumento, primerNombre, primerApellido, estadoBeneficiario, fechaInicio, latitud, longitud. ' +
-      'Opcional: municipioId, proyectoId, fechaIncorporacion, estadoEnProyecto. Formato de fechas: yyyy-mm-dd. Genero: M/F.';
+      'Instrucciones: Rellene la hoja Template-Beneficiarios. Campos requeridos: numeroDocumento, primerNombre, primerApellido, latitud, longitud. ' +
+      'Opcional: municipioId, proyectoId. Formato de fechas: yyyy-mm-dd. Genero: M/F. ' +
+      'Las fechas de inicio e incorporación se llenan automáticamente con la fecha de carga. ' +
+      'El estado del beneficiario y del vínculo al proyecto se fijan automáticamente en 1 (activo).';
     info.getCell('A1').alignment = { wrapText: true } as any;
     info.getColumn(1).width = 120;
 
